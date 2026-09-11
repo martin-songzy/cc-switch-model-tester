@@ -4,6 +4,7 @@
 
 ## 一、安装与启动
 
+- **获取 exe**：打开仓库 [Actions 构建页](../actions) → 最新绿色构建 → 页面底部 Artifacts 下载 `cc-switch-model-tester-windows` → 解压。
 - **便携版**：直接双击 `cc-switch-model-tester.exe`，无需安装。
 - **前置要求**：
   - 本机已安装并配置过 [cc-switch](https://github.com/farion1231/cc-switch) 3.20.x（数据库位于 `~/.cc-switch/cc-switch.db`）。
