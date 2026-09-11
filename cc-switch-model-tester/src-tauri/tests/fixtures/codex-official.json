@@ -1,0 +1,7 @@
+{
+  "app_type": "codex",
+  "provider_id": "codex-official",
+  "name": "OpenAI Official",
+  "settings_config": "{\"auth\":{\"OPENAI_API_KEY\":\"sk-test-redacted-0001\"},\"config\":\"\\n[marketplaces.openai-bundled]\\nlast_updated = \\\"2026-07-18T04:23:30Z\\\"\\nsource_type = \\\"local\\\"\\nsource = '\\\\\\\\?\\\\C:\\\\Users\\\\songz\\\\.codex\\\\.tmp\\\\bundled-marketplaces\\\\openai-bundled'\\n\"}",
+  "meta": "{}"
+}

@@ -1,0 +1,7 @@
+{
+  "app_type": "pi",
+  "provider_id": "linxi-gongyizhan",
+  "name": "林夕公益站",
+  "settings_config": "{\"name\":\"林夕公益站\",\"baseUrl\":\"https://k40.shengqainbang.cn\",\"api\":\"anthropic-messages\",\"apiKey\":\"sk-test-redacted-0001\",\"models\":[{\"id\":\"claude-opus-5\",\"name\":\"claude-opus-5\",\"reasoning\":false,\"input\":[\"text\"],\"contextWindow\":900000,\"maxTokens\":128000}]}",
+  "meta": "{}"
+}

@@ -1,0 +1,26 @@
+# 项目级构建配置：显式提供完整的 MSVC 工具链环境（等效于 vcvars64.bat）。
+#
+# 背景：系统 PATH 中存在 Git/MSYS2 的同名 link.exe（GNU coreutils），
+# 且本机 vswhere/VS 实例探测不稳定（返回空），导致 rustc / cc crate
+# 无法自动定位 MSVC 工具链（报 missing operand / cl.exe not found）。
+# 因此这里把编译器、链接器与 INCLUDE/LIB 环境全部写死（本机固定安装路径）。
+
+[target.x86_64-pc-windows-msvc]
+linker = "D:/Program Files/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.exe"
+rustflags = [
+  "-L", "native=D:/Program Files/BuildTools/VC/Tools/MSVC/14.44.35207/lib/x64",
+  "-L", "native=C:/Program Files (x86)/Windows Kits/10/Lib/10.0.26100.0/um/x64",
+  "-L", "native=C:/Program Files (x86)/Windows Kits/10/Lib/10.0.26100.0/ucrt/x64",
+]
+
+[env]
+# C/C++ 编译器（cc crate 的 build script 使用，如 vswhom-sys）
+CC = "D:/Program Files/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe"
+CXX = "D:/Program Files/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe"
+# 构建进程专用 PATH：前置 MSVC/SDK 工具（cl.exe / link.exe / lib.exe / rc.exe），
+# 使 cc crate 能找到 lib.exe；其余保留系统基础目录。
+PATH = "D:/Program Files/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64;C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64;C:/Windows/System32;C:/Windows;C:/Windows/System32/wbem;C:/Windows/System32/WindowsPowerShell/v1.0"
+# cl.exe 查找系统头文件的目录（等效 vcvars 的 INCLUDE）
+INCLUDE = "D:/Program Files/BuildTools/VC/Tools/MSVC/14.44.35207/include;C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/ucrt;C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/um;C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/shared;C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/winrt;C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/cppwinrt"
+# 链接器查找系统库的目录（等效 vcvars 的 LIB）
+LIB = "D:/Program Files/BuildTools/VC/Tools/MSVC/14.44.35207/lib/x64;C:/Program Files (x86)/Windows Kits/10/Lib/10.0.26100.0/ucrt/x64;C:/Program Files (x86)/Windows Kits/10/Lib/10.0.26100.0/um/x64"

@@ -1,0 +1,22 @@
+# 密钥与敏感文件（绝不提交）
+cc-switch-export-*.sql
+*.sql.bak
+**/*.db
+**/*.db-journal
+**/*.db-wal
+**/*.db-shm
+
+# 构建产物与依赖
+node_modules/
+src-tauri/target/
+dist/
+.svelte-kit/
+build/
+
+# 临时文件
+tmp_*.js
+tmp_*.log
+*.log
+
+# 本地环境
+.env
