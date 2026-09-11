@@ -63,17 +63,17 @@ function redact(v, keyHint) {
 // 选定的 fixture 对象（覆盖各解析分支）
 const SELECTION = [
   // Claude: 普通 anthropic / 自定义 headers / openai_chat / openai_responses
-  { match: (r) => r[0] === '2e9a00c2-b270-4904-8958-29365b8d848d', file: 'claude-anthropic-kimi.json' },
-  { match: (r) => r[0] === 'universal-claude-7166e17b-deaa-4140-9b42-676df412668a', file: 'claude-anthropic-agentrouter.json' },
-  { match: (r) => r[0] === 'c3e9ebd3-5e02-4040-8dd1-6c18a3b4bf3c', file: 'claude-openai-chat-jungongyi.json' },
-  { match: (r) => r[0] === '无名公益站-1785301579282', file: 'claude-openai-responses-wuming.json' },
+  { match: (r) => r[0] === '2e9a00c2-b270-4904-8958-29365b8d848d', file: 'claude-anthropic-relay-b.json' },
+  { match: (r) => r[0] === 'universal-claude-7166e17b-deaa-4140-9b42-676df412668a', file: 'claude-anthropic-relay-a.json' },
+  { match: (r) => r[0] === 'c3e9ebd3-5e02-4040-8dd1-6c18a3b4bf3c', file: 'claude-openai-chat-relay-c.json' },
+  { match: (r) => r[0] === '无名公益站-1785301579282', file: 'claude-openai-responses-relay-d.json' },
   // Codex: 官方（无 model 字段）/ 第三方 custom
   { match: (r) => r[2] === 'OpenAI Official', file: 'codex-official.json' },
-  { match: (r) => r[2] === 'Agentrouter' && r[1] === 'codex', file: 'codex-agentrouter.json' },
+  { match: (r) => r[2] === 'RelayA' && r[1] === 'codex', file: 'codex-relay-a.json' },
   // Pi: anthropic-messages / openai-completions / openai-responses / authHeader+clientEmulation
-  { match: (r) => r[0] === 'linxi-gongyizhan', file: 'pi-anthropic-messages-linxi.json' },
-  { match: (r) => r[0] === 'tokenrhythm', file: 'pi-openai-completions-tokenrhythm.json' },
-  { match: (r) => r[0] === 'seekai', file: 'pi-openai-responses-zzzcoding.json' },
+  { match: (r) => r[0] === 'relay-e-gongyizhan', file: 'pi-anthropic-messages-relay-e.json' },
+  { match: (r) => r[0] === 'relay-g', file: 'pi-openai-completions-relay-g.json' },
+  { match: (r) => r[0] === 'seekai', file: 'pi-openai-responses-relay-f.json' },
   { match: (r) => r[0] === 'anyrouter' && r[1] === 'pi', file: 'pi-authheader-clientemulation.json' },
 ];
 

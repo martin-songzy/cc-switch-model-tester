@@ -44,8 +44,8 @@ fn parse(f: &Fixture) -> ProviderSnapshot {
 // ==================== Claude fixture ====================
 
 #[test]
-fn claude_anthropic_kimi_ready() {
-    let snap = parse(&load_fixture("claude-anthropic-kimi.json"));
+fn claude_anthropic_relay_b_ready() {
+    let snap = parse(&load_fixture("claude-anthropic-relay-b.json"));
     assert_eq!(snap.status, ProviderStatus::Ready);
     assert_eq!(snap.app, AppType::Claude);
     assert_eq!(snap.protocol, cc_switch_model_tester_lib::domain::ApiProtocol::AnthropicMessages);
@@ -58,13 +58,13 @@ fn claude_anthropic_kimi_ready() {
     // 模型去重
     let ids: std::collections::HashSet<_> = snap.models.iter().map(|m| m.model_id.clone()).collect();
     assert_eq!(ids.len(), snap.models.len());
-    assert!(snap.credential.is_some(), "kimi fixture 含认证字段");
+    assert!(snap.credential.is_some(), "relay-b fixture 含认证字段");
     assert!(snap.custom_user_agent.is_none());
 }
 
 #[test]
-fn claude_agentrouter_custom_user_agent() {
-    let snap = parse(&load_fixture("claude-anthropic-agentrouter.json"));
+fn claude_relay_a_custom_user_agent() {
+    let snap = parse(&load_fixture("claude-anthropic-relay-a.json"));
     assert_eq!(snap.status, ProviderStatus::Ready);
     assert!(
         snap.custom_user_agent
@@ -78,7 +78,7 @@ fn claude_agentrouter_custom_user_agent() {
 
 #[test]
 fn claude_openai_chat_protocol_mapping() {
-    let snap = parse(&load_fixture("claude-openai-chat-jungongyi.json"));
+    let snap = parse(&load_fixture("claude-openai-chat-relay-c.json"));
     assert_eq!(snap.status, ProviderStatus::Ready);
     assert_eq!(snap.protocol, cc_switch_model_tester_lib::domain::ApiProtocol::OpenAiChat);
     assert_eq!(snap.raw_protocol.as_deref(), Some("openai_chat"));
@@ -86,7 +86,7 @@ fn claude_openai_chat_protocol_mapping() {
 
 #[test]
 fn claude_openai_responses_protocol_mapping() {
-    let snap = parse(&load_fixture("claude-openai-responses-wuming.json"));
+    let snap = parse(&load_fixture("claude-openai-responses-relay-d.json"));
     assert_eq!(snap.status, ProviderStatus::Ready);
     assert_eq!(snap.protocol, cc_switch_model_tester_lib::domain::ApiProtocol::OpenAiResponses);
 }
@@ -94,11 +94,11 @@ fn claude_openai_responses_protocol_mapping() {
 // ==================== Codex fixture ====================
 
 #[test]
-fn codex_agentrouter_toml_and_catalog() {
-    let snap = parse(&load_fixture("codex-agentrouter.json"));
+fn codex_relay_a_toml_and_catalog() {
+    let snap = parse(&load_fixture("codex-relay-a.json"));
     assert_eq!(snap.status, ProviderStatus::Ready, "error={:?}", snap.config_error);
     assert_eq!(snap.protocol, cc_switch_model_tester_lib::domain::ApiProtocol::OpenAiResponses);
-    assert_eq!(snap.endpoint, "https://agentrouter.org/v1");
+    assert_eq!(snap.endpoint, "https://relay-a.example.com/v1");
     assert_eq!(snap.models.len(), 1);
     assert_eq!(snap.models[0].model_id, "gpt-5.5");
     assert!(snap.credential.is_some());
@@ -129,8 +129,8 @@ fn codex_base_url_but_no_model_is_config_error() {
 // ==================== Pi fixture ====================
 
 #[test]
-fn pi_anthropic_messages_linxi() {
-    let snap = parse(&load_fixture("pi-anthropic-messages-linxi.json"));
+fn pi_anthropic_messages_relay_e() {
+    let snap = parse(&load_fixture("pi-anthropic-messages-relay-e.json"));
     assert_eq!(snap.status, ProviderStatus::Ready);
     assert_eq!(snap.protocol, cc_switch_model_tester_lib::domain::ApiProtocol::AnthropicMessages);
     assert_eq!(snap.raw_protocol.as_deref(), Some("anthropic-messages"));
@@ -141,8 +141,8 @@ fn pi_anthropic_messages_linxi() {
 }
 
 #[test]
-fn pi_openai_completions_tokenrhythm() {
-    let snap = parse(&load_fixture("pi-openai-completions-tokenrhythm.json"));
+fn pi_openai_completions_relay_g() {
+    let snap = parse(&load_fixture("pi-openai-completions-relay-g.json"));
     assert_eq!(snap.status, ProviderStatus::Ready);
     assert_eq!(snap.protocol, cc_switch_model_tester_lib::domain::ApiProtocol::OpenAiChat);
     assert_eq!(snap.models.len(), 3);
@@ -157,8 +157,8 @@ fn pi_openai_completions_tokenrhythm() {
 }
 
 #[test]
-fn pi_openai_responses_zzzcoding() {
-    let snap = parse(&load_fixture("pi-openai-responses-zzzcoding.json"));
+fn pi_openai_responses_relay_f() {
+    let snap = parse(&load_fixture("pi-openai-responses-relay-f.json"));
     assert_eq!(snap.status, ProviderStatus::Ready);
     assert_eq!(snap.protocol, cc_switch_model_tester_lib::domain::ApiProtocol::OpenAiResponses);
     assert!(

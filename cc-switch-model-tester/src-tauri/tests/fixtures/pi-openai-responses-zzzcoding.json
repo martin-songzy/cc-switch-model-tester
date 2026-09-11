@@ -1,7 +1,0 @@
-{
-  "app_type": "pi",
-  "provider_id": "seekai",
-  "name": "zzzcoding",
-  "settings_config": "{\"clientEmulation\":{\"enabled\":true,\"profile\":\"codex\",\"debug\":true},\"name\":\"zzzcoding\",\"baseUrl\":\"https://api.zzzcoding.org\",\"api\":\"openai-responses\",\"apiKey\":\"sk-test-redacted-0001\",\"models\":[{\"id\":\"gpt-6-astra\",\"name\":\"gpt-6-astra\",\"reasoning\":true,\"input\":[\"text\",\"image\"],\"contextWindow\":1000000,\"maxTokens\":128000,\"thinkingLevelMap\":{\"max\":\"max\",\"xhigh\":\"xhigh\",\"high\":\"high\"}}]}",
-  "meta": "{}"
-}

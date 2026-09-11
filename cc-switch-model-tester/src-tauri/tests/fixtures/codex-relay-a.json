@@ -1,0 +1,7 @@
+{
+  "app_type": "codex",
+  "provider_id": "universal-codex-7166e17b-deaa-4140-9b42-676df412668a",
+  "name": "RelayA",
+  "settings_config": "{\"auth\":{\"OPENAI_API_KEY\":\"sk-test-redacted-0001\"},\"config\":\"model_provider = \\\"custom\\\"\\nmodel = \\\"gpt-5.5\\\"\\nmodel_reasoning_effort = \\\"high\\\"\\ndisable_response_storage = true\\n\\n[model_providers.custom]\\nname = \\\"NewAPI\\\"\\nbase_url = \\\"https://relay-a.example.com/v1\\\"\\nwire_api = \\\"responses\\\"\\nrequires_openai_auth = false\\n\\n[projects.'d:\\\\temp']\\ntrust_level = \\\"trusted\\\"\\n\\n[windows]\\nsandbox = \\\"unelevated\\\"\\n\"}",
+  "meta": "{\"commonConfigEnabled\":false,\"endpointAutoSelect\":true,\"apiFormat\":\"openai_responses\"}"
+}

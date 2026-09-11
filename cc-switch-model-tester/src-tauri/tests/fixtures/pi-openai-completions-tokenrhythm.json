@@ -1,7 +1,0 @@
-{
-  "app_type": "pi",
-  "provider_id": "tokenrhythm",
-  "name": "tokenrhythm",
-  "settings_config": "{\"name\":\"tokenrhythm\",\"baseUrl\":\"https://tokenrhythm.studio/v1\",\"api\":\"openai-completions\",\"apiKey\":\"sk-test-redacted-0001\",\"models\":[{\"id\":\"glm-5.3-flash\",\"name\":\"glm-5.3-flash\",\"reasoning\":true,\"input\":[\"text\",\"image\"],\"contextWindow\":1000000,\"maxTokens\":131072,\"thinkingLevelMap\":{\"max\":\"max\",\"xhigh\":null,\"high\":\"high\",\"minimal\":null,\"low\":\"low\",\"medium\":null,\"off\":null}},{\"id\":\"glm-5.3\",\"name\":\"glm-5.3\",\"reasoning\":true,\"input\":[\"text\"],\"contextWindow\":1000000,\"maxTokens\":131072,\"thinkingLevelMap\":{\"low\":\"low\",\"minimal\":null,\"off\":null,\"medium\":null,\"high\":\"high\",\"xhigh\":null,\"max\":\"max\"}},{\"id\":\"deepseek-v4-flash-0731\",\"name\":\"deepseek-v4-flash-0731\",\"reasoning\":true,\"input\":[\"text\"],\"contextWindow\":900000,\"maxTokens\":131071}]}",
-  "meta": "{}"
-}

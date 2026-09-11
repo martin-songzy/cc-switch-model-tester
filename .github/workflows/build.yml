@@ -1,0 +1,48 @@
+name: build
+
+# 触发：push 到 master 自动编译；Actions 页面可手动触发
+on:
+  push:
+    branches: [master]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: cc-switch-model-tester/package-lock.json
+
+      - name: 安装 Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust 编译缓存
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: cc-switch-model-tester/src-tauri
+
+      - name: 安装前端依赖
+        working-directory: cc-switch-model-tester
+        run: npm ci
+
+      - name: 前端类型检查
+        working-directory: cc-switch-model-tester
+        run: npm run check
+
+      - name: 构建便携版 exe
+        working-directory: cc-switch-model-tester
+        run: npm run tauri build -- --no-bundle
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: cc-switch-model-tester-windows
+          path: cc-switch-model-tester/src-tauri/target/release/cc-switch-model-tester.exe
+          retention-days: 30

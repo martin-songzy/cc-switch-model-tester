@@ -1,7 +1,0 @@
-{
-  "app_type": "claude",
-  "provider_id": "2e9a00c2-b270-4904-8958-29365b8d848d",
-  "name": "Kimi For Coding",
-  "settings_config": "{\"env\":{\"ANTHROPIC_AUTH_TOKEN\":\"sk-test-redacted-0001\",\"ANTHROPIC_BASE_URL\":\"https://api.kimi.com/coding/\",\"ANTHROPIC_DEFAULT_FABLE_MODEL\":\"k3[1M]\",\"ANTHROPIC_DEFAULT_FABLE_MODEL_NAME\":\"k3\",\"ANTHROPIC_DEFAULT_HAIKU_MODEL\":\"kimi-for-coding\",\"ANTHROPIC_DEFAULT_OPUS_MODEL\":\"kimi-for-coding\",\"ANTHROPIC_DEFAULT_OPUS_MODEL_NAME\":\"kimi-for-coding\",\"ANTHROPIC_DEFAULT_SONNET_MODEL\":\"kimi-for-coding-highspeed\",\"ANTHROPIC_DEFAULT_SONNET_MODEL_NAME\":\"kimi-for-coding-highspeed\",\"ANTHROPIC_MODEL\":\"k3[1M]\",\"CLAUDE_CODE_MAX_CONTEXT_TOKENS\":\"sk-test-redacted-0001\",\"CLAUDE_CODE_AUTO_COMPACT_WINDOW\":\"262144\",\"CLAUDE_CODE_SUBAGENT_MODEL\":\"kimi-for-coding\"}}",
-  "meta": "{\"commonConfigEnabled\":true,\"usage_script\":{\"enabled\":true,\"language\":\"javascript\",\"code\":\"\",\"timeout\":10,\"templateType\":\"token_plan\",\"autoQueryInterval\":5,\"codingPlanProvider\":\"kimi\"},\"endpointAutoSelect\":true,\"apiFormat\":\"anthropic\"}"
-}
