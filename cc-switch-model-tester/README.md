@@ -1,7 +1,104 @@
-# Tauri + SvelteKit + TypeScript
+# cc-switch Model Tester 使用手册
 
-This template should help get you started developing with Tauri, SvelteKit and TypeScript in Vite.
+批量测试 cc-switch 管理的 LLM API 供应商/模型是否真正可用（Claude Code / Codex / Pi agent）。
 
-## Recommended IDE Setup
+## 一、安装与启动
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer).
+- **便携版**：直接双击 `cc-switch-model-tester.exe`，无需安装。
+- **前置要求**：
+  - 本机已安装并配置过 [cc-switch](https://github.com/farion1231/cc-switch) 3.20.x（数据库位于 `~/.cc-switch/cc-switch.db`）。
+  - Windows 10 / 11。
+- 数据均存放在本机（`%LOCALAPPDATA%\CcSwitchModelTester\`），无任何网络上报。
+
+## 二、快速上手
+
+1. 顶部三个应用标签：**Claude Code / Codex / Pi agent**，切换查看对应供应商目录。
+2. 用搜索框过滤供应商（多关键词空格分隔，AND 逻辑），勾选要测的供应商和模型。
+3. 点击「打开测试面板」，设置测试参数（次数 / 超时 / 并发 / 模式）后**先预览**。
+4. 预览确认去重明细后，点「开始测试」。结果实时出现在结果表，点行可看明细。
+
+## 三、界面说明
+
+### 测试目录
+- 供应商行：点击名称/ID 展开/折叠模型；勾选框全选/取消该供应商的所有模型。
+- 「可测试」徽章：点击可**禁用/恢复**该供应商的测试资格（禁用状态会记住）。
+- 「收起目录」按钮：目录区隐藏，测试面板最大化。
+
+### 测试面板
+- 参数说明：
+  - **次数**：每个模型发送几次请求（1~20，默认 3）。
+  - **超时（秒）**：单个请求最大等待时间（5~600，默认 60）。
+  - **并发**：全局最多同时发几个请求（1~50）；单供应商并发（1~10）。
+  - **模式**：非流式 / 流式。
+- **去重**：完全相同的测试目标（同端点+协议+模式+凭据指纹等）自动合并只发一次，预览时可见减少的请求数。
+- 结果列：全部支持排序和筛选（列头漏斗，有筛选时变蓝色胶囊）。
+- 结果表点击行 → 展开明细区（第几次请求、HTTP 状态、耗时、API Key 尾号、说明）；点明细行 → 浮窗显示完整提示词/响应/错误。
+- **结果稳定性**：同一模型多次请求全部成功 = 稳定；部分成功 = 不稳定；全部失败 = 不可用。
+
+### 历史
+- 自动保留**最近 15 分钟**内结束的测试轮次；可按 Claude Code / Codex / Pi 分类查看。
+- 每轮显示通过/失败/通过率；点「查看明细」复现当时的逐次请求记录。
+- 支持删除单轮或清空全部。历史不包含完整响应，API Key 只显示末尾 4 位。
+
+### 设置
+- **cc-switch 数据源**：默认自动找 `~/.cc-switch/cc-switch.db`；cc-switch 换了位置时在这里填新路径即可。
+- **代理**：默认 `socks5://127.0.0.1:1080`；填 `direct` 强制直连。代理失败不会自动回退直连。
+- **测试提示词**：8 条内置短提示词（可改文字/停用，不可删），支持新增自定义；测试时随机使用已启用项（同模型连续不重复）。
+- **负面规则**：响应中包含这些文字即判失败（不区分大小写）。内置 8 条，可增改停用。
+- 所有设置保存在本机数据库，重启后保留。
+
+## 四、测试结果类别
+
+| 类别 | 含义 |
+|---|---|
+| 通过 | 模型返回了有效回答 |
+| 网络错误 | 连不上（DNS/代理/断网），或请求超时 |
+| 鉴权失败 | 401/403，Key 无效或无权限 |
+| HTTP 错误 | 4xx/5xx；404/400 通常是 Base URL 配错 |
+| 负面规则 | HTTP 200 但响应包含负面规则文字（如 "quota exceeded"） |
+| 错误对象 | HTTP 200 但返回的是 JSON 错误对象（如 `{"error": ...}`） |
+| 空响应 | HTTP 200 但没有任何文本内容 |
+| 解析失败 | 响应格式不是该协议约定的结构 |
+| 已取消 | 手动取消；不计入失败统计 |
+
+## 五、常见问题
+
+- **全部显示鉴权失败**：Key 失效或代理没生效；先在设置里确认代理，再看明细浮窗里的响应体。
+- **某供应商全部网络错误**：该站点可能需要代理而代理没开，或站点已下线。
+- **400 且说明含「Base URL 可能不正确」**：端点路径不对（如 Anthropic 协议填了 OpenAI 风格地址）。
+- **提示重新预览**：测试期间 cc-switch 里的配置被改动了，重新点预览即可。
+- **工具打不开/白屏**：确认 Windows 10 1809 以上（需要 WebView2 运行时，Win11 自带）。
+
+## 六、安全说明
+
+- 工具对 cc-switch 数据库**只读**，绝不写入或修改 cc-switch 的任何配置。
+- API Key 全程留在本机内存；界面与历史记录只显示**末尾 4 位**（如 `…abcd`）用于区分不同 Key。
+- 测试请求只发往你配置的端点（或经你设置的代理）。
+- 日志中的密钥与 URL 查询参数均自动脱敏。
+
+## 七、已知限制
+
+- 仅支持 cc-switch schema 16~18（3.19.x ~ 3.20.x）。
+- Bedrock 协议明确不支持（显示「暂不支持」，不会发送请求）。
+- 历史只保留 15 分钟（可手动清空；不支持导出）。
+- API Key 只显示末尾 4 位，不提供明文查看（有意设计）。
+- 去重只合并**精确等价**的目标；同名供应商/相同域名不会误合并。
+- 失败不自动重试（避免对故障站点雪上加霜）。
+
+## 八、开发
+
+```powershell
+# 一键构建便携版（自动拷贝到 dist\）
+build.cmd
+
+# 前端类型检查
+npm run check
+
+# Rust 全量测试（114 项）
+cd src-tauri; cargo test
+
+# Key 泄露扫描（发布前必跑）
+node tools/scan-secrets.mjs
+```
+
+技术栈：Tauri 2 + Rust + Svelte 5。目录结构：`src/`（前端）、`src-tauri/`（后端）、`src-tauri/tests/`（脱敏 fixture + 自动化测试）。
