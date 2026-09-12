@@ -27,6 +27,8 @@ fn snapshot(provider_id: &str, name: &str) -> ProviderSnapshot {
         }),
         headers: vec![],
         custom_user_agent: None,
+        client_emulation: None,
+        local_proxy_body_patch: None,
         full_url: false,
         compat: serde_json::Value::Null,
         passthrough: serde_json::Value::Null,
@@ -38,7 +40,7 @@ fn snapshot(provider_id: &str, name: &str) -> ProviderSnapshot {
 }
 
 fn expand(snap: &ProviderSnapshot, all: bool) -> Vec<ExpandedTarget> {
-    expand_provider(snap, &HashSet::new(), 3, TestMode::NonStreaming, all)
+    expand_provider(snap, &HashSet::new(), 3, TestMode::NonStreaming, all, &std::collections::HashMap::new())
 }
 
 #[test]
@@ -146,7 +148,7 @@ fn dedup_is_deterministic() {
 fn selected_models_filter() {
     let s1 = snapshot("p1", "A");
     let selected: HashSet<String> = ["m1".to_string()].into();
-    let targets = expand_provider(&s1, &selected, 3, TestMode::NonStreaming, false);
+    let targets = expand_provider(&s1, &selected, 3, TestMode::NonStreaming, false, &std::collections::HashMap::new());
     assert_eq!(targets.len(), 1);
     assert_eq!(targets[0].target.model_id, "m1");
 }

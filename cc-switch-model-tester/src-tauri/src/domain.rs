@@ -168,6 +168,10 @@ pub struct ProviderSnapshot {
     /// 供应商字面量自定义 Header（Pi headers / Codex http_headers / Claude overrides.headers）
     pub headers: Vec<(String, String)>,
     pub custom_user_agent: Option<String>,
+    /// pi 供应商 settings_config 里的 clientEmulation 配置（None = 未配置）
+    pub client_emulation: Option<ClientEmulationSpec>,
+    /// meta.localProxyRequestOverrides.body（cc-switch 本地代理请求体改写规则）
+    pub local_proxy_body_patch: Option<serde_json::Value>,
     /// meta.isFullUrl = true 时不自动追加 API 路径
     pub full_url: bool,
     /// compat 合并结果
@@ -209,6 +213,10 @@ impl ProviderSnapshot {
                 })
                 .collect(),
             credential_label: credential_label.to_string(),
+            client_emulation: self.client_emulation.as_ref().map(|s| ClientEmulationSpecView {
+                enabled: s.enabled,
+                profile: s.profile.clone(),
+            }),
             warnings: self.warnings.clone(),
             error: self.config_error.clone(),
             raw_config_hash: self.raw_config_hash.clone(),
@@ -231,9 +239,21 @@ pub struct ProviderCatalogView {
     pub candidate_endpoint_count: usize,
     pub models: Vec<ModelView>,
     pub credential_label: String,
+    /// 客户端仿真配置（pi 供应商；None = 未配置）
+    pub client_emulation: Option<ClientEmulationSpecView>,
     pub warnings: Vec<String>,
     pub error: Option<String>,
     pub raw_config_hash: String,
+}
+
+/// 客户端仿真配置摘要（目录页展示 + 默认开关值）
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClientEmulationSpecView {
+    /// 配置默认状态
+    pub enabled: bool,
+    /// 画像名
+    pub profile: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -264,8 +284,27 @@ pub struct TestTarget {
     pub credential: Option<CredentialValue>,
     pub headers: Vec<(String, String)>,
     pub custom_user_agent: Option<String>,
+    /// 客户端仿真（每模型开关，默认值来自供应商配置）
+    pub emulation: bool,
+    pub client_emulation: Option<ClientEmulationSpec>,
+    /// cc-switch 本地代理 body 改写规则（应用与否由全局开关控制）
+    pub local_proxy_body_patch: Option<serde_json::Value>,
     pub full_url: bool,
     pub compat: serde_json::Value,
+}
+
+/// 客户端仿真配置（来自 pi 供应商 settings_config 的 clientEmulation 字段）
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClientEmulationSpec {
+    /// 配置默认状态（clientEmulation.enabled）
+    pub enabled: bool,
+    /// 画像名：claude-code / codex / gemini-cli
+    pub profile: String,
+    /// 覆盖 UA
+    pub user_agent: Option<String>,
+    /// 追加/覆盖请求头；值 None 表示删除该头
+    pub headers: Vec<(String, Option<String>)>,
 }
 
 impl ProviderSnapshot {
@@ -285,6 +324,9 @@ impl ProviderSnapshot {
             credential: self.credential.clone(),
             headers: self.headers.clone(),
             custom_user_agent: self.custom_user_agent.clone(),
+            emulation: false, // 由调度层按每模型开关赋值
+            client_emulation: self.client_emulation.clone(),
+            local_proxy_body_patch: self.local_proxy_body_patch.clone(),
             full_url: self.full_url,
             compat: model.compat.clone(),
         }

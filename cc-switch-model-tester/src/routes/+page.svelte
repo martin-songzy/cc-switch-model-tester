@@ -9,6 +9,7 @@
     errText,
     selectionKey,
     type AppInfo,
+    type ModelView,
     type ProviderCatalogView,
     type SourceInfo,
     type TabAppType,
@@ -29,6 +30,44 @@
   let expanded = $state<Record<string, boolean>>({});
   /** 全局选中集合：key = providerId::modelId */
   let selected = $state<Set<string>>(new Set());
+
+  // ---- 客户端仿真：每模型开关（localStorage 持久化手动覆盖；默认跟随供应商配置）----
+  const EMU_LS_KEY = 'tester.emulation.v1';
+  let emuOverrides = $state<Record<string, boolean>>(readEmuStore());
+
+  function readEmuStore(): Record<string, boolean> {
+    try {
+      return JSON.parse(localStorage.getItem(EMU_LS_KEY) ?? '{}');
+    } catch {
+      return {};
+    }
+  }
+  function persistEmu() {
+    try {
+      localStorage.setItem(EMU_LS_KEY, JSON.stringify(emuOverrides));
+    } catch { /* 忽略存储失败 */ }
+  }
+
+  /** 模型的仿真生效值：手动覆盖 > 供应商配置默认值 */
+  function emulationOf(p: ProviderCatalogView, m: ModelView): boolean {
+    const k = selectionKey(activeTab, p.id, m.modelId);
+    return emuOverrides[k] ?? p.clientEmulation?.enabled ?? false;
+  }
+  function toggleEmulation(p: ProviderCatalogView, m: ModelView) {
+    const k = selectionKey(activeTab, p.id, m.modelId);
+    emuOverrides[k] = !emulationOf(p, m);
+    persistEmu();
+  }
+  /** 仿真画像与协议是否匹配（不匹配时禁用开关） */
+  const EMU_PROFILE_APIS: Record<string, string[]> = {
+    'claude-code': ['anthropic_messages'],
+    'codex': ['openai_responses'],
+    'gemini-cli': ['gemini_native', 'openai_chat'],
+  };
+  function emulationCompatible(p: ProviderCatalogView): boolean {
+    const apis = EMU_PROFILE_APIS[p.clientEmulation?.profile ?? 'claude-code'] ?? [];
+    return apis.includes(p.protocol);
+  }
 
   // ---- 布局：目录区高度可拖动；测试面板可开关 ----
   let panelOpen = $state(false);
@@ -524,6 +563,20 @@
                   {#if m.displayName && m.displayName !== m.modelId}
                     <span class="muted model-display">{m.displayName}</span>
                   {/if}
+                  <span class="spacer model-spacer"></span>
+                  <button
+                    type="button"
+                    class="emu-toggle"
+                    class:on={emulationOf(p, m)}
+                    disabled={!emulationCompatible(p)}
+                    onclick={(e) => {
+                      e.preventDefault();
+                      toggleEmulation(p, m);
+                    }}
+                    title={emulationCompatible(p)
+                      ? `客户端仿真：${emulationOf(p, m) ? '开' : '关'}（模拟 ${p.clientEmulation?.profile ?? 'claude-code'} 客户端指纹）`
+                      : `仿真画像 ${p.clientEmulation?.profile ?? ''} 与该供应商协议不匹配`}
+                  >🎭 仿真{emulationOf(p, m) ? ' ✓' : ''}</button>
                 </label>
               {/each}
             </div>
@@ -683,6 +736,17 @@
   .model-row:hover { background: #f4f6fa; }
   .model-row.off { cursor: default; opacity: 0.6; }
   .model-row input { width: 14px; height: 14px; cursor: pointer; }
+  .model-spacer { flex: 1; }
+  .emu-toggle {
+    border: 1px solid #dde1e8; background: #fff; border-radius: 10px;
+    padding: 1px 8px; font-size: 11px; color: #8a93a5; cursor: pointer;
+    white-space: nowrap; flex: none;
+  }
+  .emu-toggle:hover:not(:disabled) { border-color: #3b6ef6; color: #3b6ef6; }
+  .emu-toggle.on {
+    background: #e4edfb; border-color: #3b6ef6; color: #2a5aa8; font-weight: 600;
+  }
+  .emu-toggle:disabled { opacity: 0.4; cursor: not-allowed; }
   .model-id { font-size: 12.5px; }
   .model-display { font-size: 12px; }
   .empty { text-align: center; color: #8a93a5; padding: 40px 0; }

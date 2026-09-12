@@ -140,6 +140,9 @@ mod tests {
             credential: cred.map(|kind| CredentialValue { kind, secret: "sk-test".into() }),
             headers,
             custom_user_agent: None,
+            emulation: false,
+            client_emulation: None,
+            local_proxy_body_patch: None,
             full_url: false,
             compat: serde_json::Value::Null,
         }

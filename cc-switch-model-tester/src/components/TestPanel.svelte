@@ -31,6 +31,8 @@
   let globalConcurrency = $state(10);
   let providerConcurrency = $state(1);
   let testAllCandidateEndpoints = $state(false);
+  /** 应用 cc-switch 本地代理的请求体改写（overrides.body） */
+  let applyBodyOverrides = $state(true);
   let confirmHighConcurrency = $state(false);
 
   const PARAMS_KEY = 'tester.params.v1';
@@ -51,6 +53,7 @@
       globalConcurrency = clampNum(p.globalConcurrency, 1, 50, 10);
       providerConcurrency = clampNum(p.providerConcurrency, 1, 10, 1);
       testAllCandidateEndpoints = p.testAllCandidateEndpoints === true;
+      applyBodyOverrides = p.applyBodyOverrides !== false;
     }
   } catch {
     // 损坏的持久化数据按默认值处理
@@ -65,6 +68,7 @@
       globalConcurrency,
       providerConcurrency,
       testAllCandidateEndpoints,
+      applyBodyOverrides,
     });
     try {
       localStorage.setItem(PARAMS_KEY, data);
@@ -503,7 +507,7 @@
       globalConcurrency,
       providerConcurrency,
       testAllCandidateEndpoints,
-      applyBodyOverrides: false,
+      applyBodyOverrides,
     });
     if ('error' in input) {
       panelError = input.error;
@@ -712,6 +716,10 @@
       <input type="checkbox" bind:checked={testAllCandidateEndpoints} disabled={running} />
       测试全部候选端点
     </label>
+    <label class="chk" title="供应商配置了 cc-switch 本地代理的 localProxyRequestOverrides.body 时，测试请求按同样规则改写后再发送">
+      <input type="checkbox" bind:checked={applyBodyOverrides} disabled={running} />
+      应用 cc-switch 请求改写
+    </label>
     <span class="spacer"></span>
     {#if !running}
       <button class="btn primary" onclick={beginTest} disabled={selectedCount === 0}>
@@ -758,6 +766,9 @@
             {#each pendingPreview.groups.slice(0, 20) as g}
               <div class="dedup-item">
                 <span class="mono">{g.representative.providerName} · {g.representative.modelId}</span>
+                {#if g.representative.emulationProfile}
+                  <span class="emu-badge" title="此目标已开启客户端仿真">🎭 {g.representative.emulationProfile}</span>
+                {/if}
                 <span class="muted"> ← 合并 {g.mergedSources.length + 1} 个来源：</span>
                 <span class="muted">
                   {g.mergedSources.map((s) => `${s.providerName}/${s.modelKey.split('::')[1] ?? ''}`).join('、')}
@@ -1088,6 +1099,10 @@
   .dedup-groups { border-top: 1px solid #eef0f4; padding-top: 8px; font-size: 12.5px; }
   .dedup-title { color: #8a93a5; margin-bottom: 6px; }
   .dedup-item { padding: 3px 0; }
+  .emu-badge {
+    background: #e4edfb; color: #2a5aa8; border-radius: 8px;
+    padding: 0 6px; font-size: 11px; margin-left: 4px;
+  }
   .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
 
   /* 表格区块 */

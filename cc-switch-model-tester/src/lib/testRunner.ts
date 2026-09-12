@@ -15,6 +15,8 @@ export interface TestRunInput {
   providerConcurrency: number;
   testAllCandidateEndpoints: boolean;
   applyBodyOverrides: boolean;
+  /** 每模型客户端仿真开关（key = selectionKey）；缺省跟随供应商配置默认值 */
+  emulationOverrides: Record<string, boolean>;
   timeoutSeconds: number;
 }
 
@@ -41,6 +43,8 @@ export interface DedupGroupView {
     endpointDisplay: string;
     protocol: string;
     mode: string;
+    /** 客户端仿真（开启时为画像名，如 claude-code） */
+    emulationProfile?: string;
   };
   mergedSources: TargetSourceRef[];
   removedTargetCount: number;
@@ -174,11 +178,17 @@ export function buildInput(
 ): TestRunInput | { error: string } {
   const providerIds = new Set<string>();
   const modelKeys: string[] = [];
+  const emulationOverrides: Record<string, boolean> = {};
   for (const p of catalog) {
     for (const m of p.models) {
       if (selected.has(selectionKey(app, p.id, m.modelId))) {
         providerIds.add(p.id);
         modelKeys.push(selectionKey(app, p.id, m.modelId));
+        // 只传显式覆盖；未覆盖的模型后端用供应商配置默认值
+        const def = p.clientEmulation?.enabled ?? false;
+        if (m.emulation !== undefined && m.emulation !== def) {
+          emulationOverrides[selectionKey(app, p.id, m.modelId)] = m.emulation;
+        }
       }
     }
   }
@@ -191,6 +201,7 @@ export function buildInput(
     app,
     providerIds: [...providerIds],
     modelKeys,
+    emulationOverrides,
     ...opts,
   };
 }

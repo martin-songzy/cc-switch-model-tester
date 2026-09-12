@@ -165,8 +165,10 @@ async fn execute_attempt(
     prompt: &str,
     cancel: &CancellationToken,
     rules: &[CompiledRule],
+    session_id: &str,
+    apply_body_overrides: bool,
 ) -> AttemptRecord {
-    let prepared = match crate::protocol::build_request(target, prompt, mode, DEFAULT_MAX_TOKENS) {
+    let mut prepared = match crate::protocol::build_request(target, prompt, mode, DEFAULT_MAX_TOKENS) {
         Ok(p) => p,
         Err(e) => {
             return AttemptRecord {
@@ -187,6 +189,15 @@ async fn execute_attempt(
             };
         }
     };
+    // ---- 出站改写层：① 客户端仿真 → ② cc-switch overrides.body 深度合并
+    if let Some(profile) = crate::emulation::resolve_profile(target) {
+        crate::emulation::apply_client_emulation(&mut prepared, target, profile, session_id);
+    }
+    if apply_body_overrides {
+        if let Some(patch) = &target.local_proxy_body_patch {
+            crate::emulation::apply_local_proxy_body_patch(&mut prepared.body, patch);
+        }
+    }
     let adapter = crate::protocol::adapter_for(target.protocol);
     let exec: ExecutionOutput = tokio::select! {
         r = client.execute(&prepared, adapter.as_ref(), mode, limits) => r,
@@ -384,7 +395,7 @@ pub async fn run_task(
                         None => String::new(),
                     }
                 };
-                // 4. 执行（可被取消中断）
+                // 4. 执行（可被取消中断）；session_id = run_id（一轮一个，与 pi 插件同语义）
                 let rec = execute_attempt(
                     &client,
                     &limits,
@@ -393,6 +404,8 @@ pub async fn run_task(
                     &prompt,
                     &cancel,
                     &rules,
+                    &run_id,
+                    input.apply_body_overrides,
                 )
                 .await;
                 drop(_provider_permit);

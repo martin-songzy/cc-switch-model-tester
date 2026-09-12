@@ -114,6 +114,8 @@ pub(super) fn error_snapshot(
         credential: None,
         headers: Vec::new(),
         custom_user_agent: None,
+        client_emulation: None,
+        local_proxy_body_patch: None,
         full_url: false,
         compat: serde_json::Value::Null,
         passthrough: serde_json::Value::Null,

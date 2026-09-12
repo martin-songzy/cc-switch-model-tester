@@ -13,8 +13,8 @@
 use serde_json::Value;
 
 use crate::domain::{
-    ApiProtocol, AppType, CredentialKind, CredentialValue, ModelSnapshot, ProviderSnapshot,
-    ProviderStatus,
+    ApiProtocol, AppType, ClientEmulationSpec, CredentialKind, CredentialValue, ModelSnapshot,
+    ProviderSnapshot, ProviderStatus,
 };
 
 use super::{collect_headers, detect_managed, error_snapshot, nonempty_str};
@@ -178,10 +178,29 @@ pub(super) fn parse(
         );
     }
 
-    // ---- clientEmulation：cc-switch 本地代理语义，直连不模拟 ----
-    if sc.get("clientEmulation").and_then(|v| v.as_object()).is_some() {
+    // ---- clientEmulation：客户端仿真配置（每模型开关在目录页控制，默认值取 enabled）
+    let client_emulation = sc.get("clientEmulation").and_then(|v| v.as_object()).map(|ce| {
+        let headers = ce
+            .get("headers")
+            .and_then(|v| v.as_object())
+            .map(|m| {
+                m.iter()
+                    .map(|(k, v)| {
+                        (k.to_lowercase(), v.as_str().map(|s| s.to_string()))
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        ClientEmulationSpec {
+            enabled: ce.get("enabled").and_then(|v| v.as_bool()).unwrap_or(false),
+            profile: nonempty_str(ce.get("profile")).unwrap_or("claude-code").to_string(),
+            user_agent: nonempty_str(ce.get("userAgent")).map(|s| s.to_string()),
+            headers,
+        }
+    });
+    if client_emulation.is_some() {
         warnings.push(
-            "检测到 clientEmulation（cc-switch 本地代理的客户端仿真），直连测试不包含该行为"
+            "检测到 clientEmulation 配置：可在模型行开关客户端仿真（默认跟随此配置）"
                 .to_string(),
         );
     }
@@ -198,6 +217,12 @@ pub(super) fn parse(
         credential,
         headers,
         custom_user_agent: nonempty_str(meta.get("customUserAgent")).map(|s| s.to_string()),
+        client_emulation,
+        local_proxy_body_patch: meta
+            .get("localProxyRequestOverrides")
+            .and_then(|o| o.get("body"))
+            .filter(|v| v.is_object())
+            .cloned(),
         full_url: meta.get("isFullUrl").and_then(|v| v.as_bool()).unwrap_or(false),
         compat: provider_compat,
         passthrough: sc.clone(),

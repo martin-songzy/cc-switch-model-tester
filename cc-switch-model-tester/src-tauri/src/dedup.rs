@@ -27,6 +27,9 @@ pub struct TestRunInput {
     pub test_all_candidate_endpoints: bool,
     #[serde(default)]
     pub apply_body_overrides: bool,
+    /// 每模型客户端仿真开关（key = "app::providerId::modelId"；缺省用供应商配置默认值）
+    #[serde(default)]
+    pub emulation_overrides: HashMap<String, bool>,
     /// 单次请求总超时（秒），默认 60
     #[serde(default = "default_timeout")]
     pub timeout_seconds: u32,
@@ -93,6 +96,9 @@ pub struct TargetDisplay {
     pub endpoint_display: String,
     pub protocol: ApiProtocol,
     pub mode: TestMode,
+    /// 客户端仿真（开启时为画像名）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub emulation_profile: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -209,6 +215,13 @@ pub fn dedup_key_hash(t: &TestTarget, mode: TestMode) -> String {
     // 8. full_url
     material.push_str(if t.full_url { "full" } else { "auto" });
     material.push('|');
+    // 8.5 客户端仿真状态（实际生效的画像名；未启用则空）
+    material.push_str(
+        crate::emulation::resolve_profile(t)
+            .map(|p| p.name)
+            .unwrap_or(""),
+    );
+    material.push('|');
     // 9. compat 规范序列化（serde_json 对象键按字母序，确定性）
     material.push_str(&t.compat.to_string());
     // 10. body override hash：M4 未启用 Body 覆盖，恒定值
@@ -224,6 +237,7 @@ pub fn expand_provider(
     attempts_per_model: u32,
     mode: TestMode,
     test_all_candidate_endpoints: bool,
+    emulation_overrides: &HashMap<String, bool>,
 ) -> Vec<ExpandedTarget> {
     if snap.status != crate::domain::ProviderStatus::Ready {
         return Vec::new();
@@ -247,6 +261,16 @@ pub fn expand_provider(
         for ep in endpoints {
             let mut t = snap.to_test_target(model);
             t.endpoint_url = ep;
+            // 每模型仿真开关：前端显式覆盖 > 供应商配置默认值（enabled）
+            let model_key = format!("{}::{}::{}", snap.app.as_str(), snap.provider_id, model.model_id);
+            t.emulation = emulation_overrides
+                .get(&model_key)
+                .copied()
+                .unwrap_or_else(|| {
+                    snap.client_emulation
+                        .as_ref()
+                        .is_some_and(|s| s.enabled)
+                });
             let source = TargetSourceRef {
                 app: snap.app,
                 provider_id: snap.provider_id.clone(),
@@ -344,6 +368,18 @@ pub fn build_preview(
                 endpoint_display: crate::redact::redact_url(&g.representative.endpoint_url),
                 protocol: g.representative.protocol,
                 mode,
+                emulation_profile: if g.representative.emulation {
+                    g.representative
+                        .client_emulation
+                        .as_ref()
+                        .map(|s| s.profile.clone())
+                        .or_else(|| {
+                            crate::emulation::resolve_profile(&g.representative)
+                                .map(|p| p.name.to_string())
+                        })
+                } else {
+                    None
+                },
             };
             let merged = g.merged_sources.len() as u32 - 1;
             DedupGroupView {

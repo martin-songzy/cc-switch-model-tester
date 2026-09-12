@@ -185,10 +185,14 @@ pub(super) fn parse(
         }
     }
 
-    // Body 覆盖：默认不应用（文档 7.4），仅提示
-    if overrides.and_then(|o| o.get("body")).is_some() {
+    // Body 覆盖：保存规则，测试时由全局开关决定是否应用
+    let local_proxy_body_patch = overrides
+        .and_then(|o| o.get("body"))
+        .filter(|v| v.is_object())
+        .cloned();
+    if local_proxy_body_patch.is_some() {
         warnings.push(
-            "检测到 localProxyRequestOverrides.body（cc-switch 本地代理语义），默认不应用于直连测试"
+            "检测到 localProxyRequestOverrides.body（cc-switch 本地代理语义）：测试时默认按此规则改写请求体，可在测试面板关闭"
                 .to_string(),
         );
     }
@@ -205,6 +209,8 @@ pub(super) fn parse(
         credential,
         headers,
         custom_user_agent,
+        client_emulation: None,
+        local_proxy_body_patch,
         full_url,
         compat: serde_json::Value::Null,
         passthrough: sc.clone(),

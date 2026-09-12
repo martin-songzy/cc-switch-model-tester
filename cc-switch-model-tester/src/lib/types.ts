@@ -28,6 +28,8 @@ export type ProviderStatus = 'ready' | 'config_error' | 'managed_auth_skipped' |
 export interface ModelView {
   modelId: string;
   displayName: string | null;
+  /** 客户端仿真的手动覆盖值（undefined = 跟随供应商配置默认值） */
+  emulation?: boolean;
 }
 
 export interface ProviderCatalogView {
@@ -42,6 +44,8 @@ export interface ProviderCatalogView {
   candidateEndpointCount: number;
   models: ModelView[];
   credentialLabel: string;
+  /** 客户端仿真配置（pi 供应商；null = 未配置） */
+  clientEmulation: { enabled: boolean; profile: string } | null;
   warnings: string[];
   error: string | null;
   rawConfigHash: string;

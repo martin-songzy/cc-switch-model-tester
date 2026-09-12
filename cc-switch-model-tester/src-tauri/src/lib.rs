@@ -4,6 +4,7 @@
 
 pub mod ccswitch;
 pub mod dedup;
+pub mod emulation;
 pub mod domain;
 pub mod error;
 pub mod http;
@@ -238,6 +239,7 @@ fn preview_test(
             input.attempts_per_model,
             input.mode,
             input.test_all_candidate_endpoints,
+            &input.emulation_overrides,
         ));
     }
     if expanded.is_empty() {

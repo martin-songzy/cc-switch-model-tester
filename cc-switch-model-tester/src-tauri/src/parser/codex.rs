@@ -290,6 +290,12 @@ pub(super) fn parse(
         credential,
         headers,
         custom_user_agent: nonempty_str(meta.get("customUserAgent")).map(|s| s.to_string()),
+        client_emulation: None,
+        local_proxy_body_patch: meta
+            .get("localProxyRequestOverrides")
+            .and_then(|o| o.get("body"))
+            .filter(|v| v.is_object())
+            .cloned(),
         full_url,
         compat: serde_json::Value::Null,
         passthrough: sc.clone(),
