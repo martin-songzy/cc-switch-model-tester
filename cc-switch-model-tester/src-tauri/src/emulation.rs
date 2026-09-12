@@ -262,7 +262,13 @@ fn patch_prepend_identity_system_block(
             body.insert("system".into(), Value::Array(new_arr));
             true
         }
-        _ => false,
+        Some(Value::Array(_)) => false,
+        Some(Value::Null) | None => {
+            // 与插件一致：无 system 字段时创建并注入身份块（工具请求体通常无 system）
+            body.insert("system".into(), json!([identity_block]));
+            true
+        }
+        Some(_) => false,
     }
 }
 
@@ -434,10 +440,8 @@ fn set_emulation_headers(
                         .map(|(_, hv)| hv.clone())
                         .unwrap_or_default();
                     let looks_official = |s: &str| {
-                        s.contains("claude-cli/")
-                            || s.contains("codex_cli_rs/")
-                            || s.contains("GeminiCLI/")
-                            || s.contains("codex_exec/")
+                        // 与插件一致：仅识别真实官方客户端 UA；codex_exec/ 等自定义值不算
+                        s.contains("claude-cli/") || s.contains("codex_cli_rs/") || s.contains("GeminiCLI/")
                     };
                     if looks_official(&cur) {
                         continue;
@@ -529,7 +533,7 @@ mod tests {
         }
     }
 
-    fn prepared(target: &TestTarget) -> PreparedRequest {
+    fn prepared(_target: &TestTarget) -> PreparedRequest {
         PreparedRequest {
             url: "https://relay-a.example.com/v1/messages".into(),
             headers: vec![("content-type".into(), "application/json".into())],
