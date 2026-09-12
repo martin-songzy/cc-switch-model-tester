@@ -242,6 +242,12 @@ fn preview_test(
             &input.emulation_overrides,
         ));
     }
+    tracing::info!(
+        overrides = ?input.emulation_overrides,
+        emulated = expanded.iter().filter(|e| e.target.emulation).count(),
+        total = expanded.len(),
+        "[诊断] 预览展开完成：仿真目标数"
+    );
     if expanded.is_empty() {
         return Err(AppError::new(
             AppErrorKind::ProviderConfigInvalid,
@@ -342,6 +348,13 @@ fn start_test(
     }
 
     let handle = Arc::new(RunHandle::new(total));
+    tracing::info!(
+        first = entry.groups.first().map(|g| (
+            g.representative.emulation,
+            g.representative.emulation_profile.clone()
+        )),
+        "[诊断] start_test 启动：首组仿真状态"
+    );
     state.runs.lock().unwrap().insert(run_id.clone(), handle.clone());
 
     // test-run-created 事件必须包含去重摘要（文档 14.2）

@@ -114,7 +114,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  {}", redact(&prepared.body.to_string()));
 
     // 发送
-    let mut builder = reqwest::Client::builder().timeout(std::time::Duration::from_secs(60));
+    let mut builder = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(60))
+        .connect_timeout(std::time::Duration::from_secs(15))
+        // 与 http.rs 一致：默认 UA（理论上会被显式 header 覆盖）
+        .user_agent(cc_switch_model_tester_lib::APP_USER_AGENT);
     if use_proxy {
         builder = builder.proxy(reqwest::Proxy::all("socks5://127.0.0.1:1080")?);
     }

@@ -396,6 +396,12 @@ pub async fn run_task(
                     }
                 };
                 // 4. 执行（可被取消中断）；session_id = run_id（一轮一个，与 pi 插件同语义）
+                tracing::info!(
+                    emulation = group.representative.emulation,
+                    profile = ?group.representative.emulation_profile,
+                    resolved = ?crate::emulation::resolve_profile(&group.representative).map(|p| p.name),
+                    "[诊断] execute_attempt 入口仿真状态"
+                );
                 let rec = execute_attempt(
                     &client,
                     &limits,
