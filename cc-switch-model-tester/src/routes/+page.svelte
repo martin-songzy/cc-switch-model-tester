@@ -356,7 +356,7 @@
   <header>
     <div class="brand">
       <h1>cc-switch Model Tester</h1>
-      {#if appInfo}<span class="version">v{appInfo.version}</span>{/if}
+      {#if appInfo}<span class="version">v{appInfo.version} ({appInfo.commit})</span>{/if}
     </div>
 
     <div class="source" class:bad={!!source?.error}>

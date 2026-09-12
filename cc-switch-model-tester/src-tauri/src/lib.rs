@@ -17,6 +17,12 @@ pub mod redact;
 pub mod scheduler;
 mod store;
 
+/// 构建时注入的 git commit 短码（本地构建为 dev；云端由 workflow 传入）。
+pub const GIT_COMMIT: &str = match option_env!("GIT_COMMIT_SHORT") {
+    Some(s) => s,
+    None => "dev",
+};
+
 /// 统一 User-Agent 基准值（customUserAgent 可覆盖）。
 pub const APP_USER_AGENT: &str = concat!("cc-switch-model-tester/", env!("CARGO_PKG_VERSION"));
 
@@ -90,6 +96,7 @@ fn get_app_info() -> serde_json::Value {
     serde_json::json!({
         "name": "cc-switch Model Tester",
         "version": env!("CARGO_PKG_VERSION"),
+        "commit": GIT_COMMIT,
     })
 }
 
@@ -348,13 +355,13 @@ fn start_test(
     }
 
     let handle = Arc::new(RunHandle::new(total));
-    tracing::info!(
-        first = entry.groups.first().map(|g| (
-            g.representative.emulation,
-            g.representative.emulation_profile.clone()
-        )),
-        "[诊断] start_test 启动：首组仿真状态"
-    );
+    if let Some(g) = entry.groups.first() {
+        tracing::info!(
+            emulation = g.representative.emulation,
+            profile = ?g.representative.emulation_profile,
+            "[诊断] start_test 启动：首组仿真状态"
+        );
+    }
     state.runs.lock().unwrap().insert(run_id.clone(), handle.clone());
 
     // test-run-created 事件必须包含去重摘要（文档 14.2）

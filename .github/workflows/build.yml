@@ -41,6 +41,10 @@ jobs:
         working-directory: cc-switch-model-tester
         run: npm run check
 
+      - name: 写入构建 commit 短码
+        shell: pwsh
+        run: '"GIT_COMMIT_SHORT=$($env:GITHUB_SHA.Substring(0,7))" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append'
+
       - name: 构建便携版 exe
         working-directory: cc-switch-model-tester
         run: npm run tauri build -- --no-bundle

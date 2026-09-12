@@ -8,6 +8,7 @@ export interface AppErrorRepr {
 export interface AppInfo {
   name: string;
   version: string;
+  commit: string;
 }
 
 export interface AppTypeCount {
