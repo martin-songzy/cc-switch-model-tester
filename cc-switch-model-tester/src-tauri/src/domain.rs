@@ -286,6 +286,8 @@ pub struct TestTarget {
     pub custom_user_agent: Option<String>,
     /// 客户端仿真（每模型开关，默认值来自供应商配置）
     pub emulation: bool,
+    /// 用户显式选择的画像名；None = 按供应商配置/协议默认推导
+    pub emulation_profile: Option<String>,
     pub client_emulation: Option<ClientEmulationSpec>,
     /// cc-switch 本地代理 body 改写规则（应用与否由全局开关控制）
     pub local_proxy_body_patch: Option<serde_json::Value>,
@@ -324,7 +326,8 @@ impl ProviderSnapshot {
             credential: self.credential.clone(),
             headers: self.headers.clone(),
             custom_user_agent: self.custom_user_agent.clone(),
-            emulation: false, // 由调度层按每模型开关赋值
+            emulation: false, // 由调度层按每模型选择赋值
+            emulation_profile: None,
             client_emulation: self.client_emulation.clone(),
             local_proxy_body_patch: self.local_proxy_body_patch.clone(),
             full_url: self.full_url,

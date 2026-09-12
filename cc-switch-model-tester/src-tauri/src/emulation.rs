@@ -116,21 +116,29 @@ fn profile_by_name(name: &str) -> Option<&'static Profile> {
 }
 
 /// 本目标应使用的画像：
-/// 1. 供应商带 clientEmulation 配置且 profile 与协议匹配 → 用配置画像
-/// 2. 否则（手动开启）→ 按协议族默认画像
+/// 1. 用户显式选择的画像（emulation_profile）→ 无条件使用（跨协议由用户自行判断）
+/// 2. 供应商 clientEmulation 配置的 profile
+/// 3. 按协议族默认画像
 pub fn resolve_profile(target: &TestTarget) -> Option<&'static Profile> {
     if !target.emulation {
         return None;
     }
-    if let Some(spec) = &target.client_emulation {
-        if let Some(p) = profile_by_name(&spec.profile) {
-            if p.match_apis.contains(&target.protocol) {
-                return Some(p);
-            }
-        }
-        // 配置画像与协议不匹配 → 尝试协议默认（行为同扩展：不介入则跳过）
-    }
-    profile_for_protocol(target.protocol).filter(|p| p.match_apis.contains(&target.protocol))
+    let name = target
+        .emulation_profile
+        .clone()
+        .or_else(|| {
+            target
+                .client_emulation
+                .as_ref()
+                .map(|s| s.profile.clone())
+        })
+        .unwrap_or_else(|| {
+            profile_for_protocol(target.protocol)
+                .map(|p| p.name)
+                .unwrap_or("")
+                .to_string()
+        });
+    profile_by_name(&name)
 }
 
 // ==================== 设备指纹 ====================
@@ -513,6 +521,7 @@ mod tests {
             headers: vec![],
             custom_user_agent: None,
             emulation,
+            emulation_profile: None,
             client_emulation: spec,
             local_proxy_body_patch: None,
             full_url: false,

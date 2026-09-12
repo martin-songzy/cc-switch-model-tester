@@ -15,8 +15,8 @@ export interface TestRunInput {
   providerConcurrency: number;
   testAllCandidateEndpoints: boolean;
   applyBodyOverrides: boolean;
-  /** 每模型客户端仿真开关（key = selectionKey）；缺省跟随供应商配置默认值 */
-  emulationOverrides: Record<string, boolean>;
+  /** 每模型客户端仿真选择（key = selectionKey；值为画像名或 ""=关闭；缺省跟随供应商配置默认值） */
+  emulationOverrides: Record<string, string>;
   timeoutSeconds: number;
 }
 
@@ -175,19 +175,20 @@ export function buildInput(
     testAllCandidateEndpoints: boolean;
     applyBodyOverrides: boolean;
   },
-  emuOverrides: Record<string, boolean> = {},
+  emuOverrides: Record<string, string> = {},
 ): TestRunInput | { error: string } {
   const providerIds = new Set<string>();
   const modelKeys: string[] = [];
-  const emulationOverrides: Record<string, boolean> = {};
+  const emulationOverrides: Record<string, string> = {};
   for (const p of catalog) {
     for (const m of p.models) {
       const key = selectionKey(app, p.id, m.modelId);
       if (selected.has(key)) {
         providerIds.add(p.id);
         modelKeys.push(key);
-        // 全量传递生效值：手动覆盖 > 供应商配置默认值（claude/codex 供应商默认关）
-        emulationOverrides[key] = emuOverrides[key] ?? p.clientEmulation?.enabled ?? false;
+        // 全量传递生效值：手动选择 > 供应商配置默认值（claude/codex 供应商默认关）
+        emulationOverrides[key] =
+          emuOverrides[key] ?? (p.clientEmulation?.enabled ? p.clientEmulation.profile : '');
       }
     }
   }

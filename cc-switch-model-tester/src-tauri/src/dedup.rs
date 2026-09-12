@@ -27,9 +27,10 @@ pub struct TestRunInput {
     pub test_all_candidate_endpoints: bool,
     #[serde(default)]
     pub apply_body_overrides: bool,
-    /// 每模型客户端仿真开关（key = "app::providerId::modelId"；缺省用供应商配置默认值）
+    /// 每模型客户端仿真选择（key = "app::providerId::modelId"；值为画像名或 ""=关闭；
+    /// 缺省 = 供应商配置 enabled ? 配置 profile : 关闭）
     #[serde(default)]
-    pub emulation_overrides: HashMap<String, bool>,
+    pub emulation_overrides: HashMap<String, String>,
     /// 单次请求总超时（秒），默认 60
     #[serde(default = "default_timeout")]
     pub timeout_seconds: u32,
@@ -237,7 +238,7 @@ pub fn expand_provider(
     attempts_per_model: u32,
     mode: TestMode,
     test_all_candidate_endpoints: bool,
-    emulation_overrides: &HashMap<String, bool>,
+    emulation_overrides: &HashMap<String, String>,
 ) -> Vec<ExpandedTarget> {
     if snap.status != crate::domain::ProviderStatus::Ready {
         return Vec::new();
@@ -261,16 +262,22 @@ pub fn expand_provider(
         for ep in endpoints {
             let mut t = snap.to_test_target(model);
             t.endpoint_url = ep;
-            // 每模型仿真开关：前端显式覆盖 > 供应商配置默认值（enabled）
+            // 每模型仿真选择：前端显式选择（画像名/空=关）> 供应商配置默认值（enabled）
             let model_key = format!("{}::{}::{}", snap.app.as_str(), snap.provider_id, model.model_id);
-            t.emulation = emulation_overrides
+            let chosen = emulation_overrides
                 .get(&model_key)
-                .copied()
+                .cloned()
                 .unwrap_or_else(|| {
                     snap.client_emulation
                         .as_ref()
-                        .is_some_and(|s| s.enabled)
+                        .filter(|s| s.enabled)
+                        .map(|s| s.profile.clone())
+                        .unwrap_or_default()
                 });
+            t.emulation = !chosen.is_empty();
+            if t.emulation {
+                t.emulation_profile = Some(chosen);
+            }
             let source = TargetSourceRef {
                 app: snap.app,
                 provider_id: snap.provider_id.clone(),

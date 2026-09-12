@@ -157,14 +157,19 @@ fn selected_models_filter() {
 fn expand_applies_per_model_emulation_overrides() {
     let s1 = snapshot("p1", "A");
     let selected: HashSet<String> = ["m1".to_string()].into();
-    // 前端 selectionKey 格式：app::providerId::modelId；显式开 → 生效
-    let ov: HashMap<String, bool> = [("pi::p1::m1".to_string(), true)].into();
+    // 前端 selectionKey 格式：app::providerId::modelId；显式选画像 → 生效
+    let ov: HashMap<String, String> = [("pi::p1::m1".to_string(), "codex".to_string())].into();
     let targets = expand_provider(&s1, &selected, 3, TestMode::NonStreaming, false, &ov);
-    assert!(targets[0].target.emulation, "显式覆盖开应生效");
-    // 无覆盖且供应商无 clientEmulation 配置 → 默认关
-    let targets2 = expand_provider(&s1, &selected, 3, TestMode::NonStreaming, false, &std::collections::HashMap::new());
+    assert!(targets[0].target.emulation, "显式选画像应生效");
+    assert_eq!(targets[0].target.emulation_profile.as_deref(), Some("codex"));
+    // 空串 = 显式关闭
+    let ov_off: HashMap<String, String> = [("pi::p1::m1".to_string(), String::new())].into();
+    let targets2 = expand_provider(&s1, &selected, 3, TestMode::NonStreaming, false, &ov_off);
     assert!(!targets2[0].target.emulation);
-    // 供应商配置 enabled=true → 默认开
+    // 无覆盖且供应商无 clientEmulation 配置 → 默认关
+    let targets3 = expand_provider(&s1, &selected, 3, TestMode::NonStreaming, false, &HashMap::new());
+    assert!(!targets3[0].target.emulation);
+    // 供应商配置 enabled=true → 默认开（用配置的画像）
     let mut s2 = snapshot("p1", "A");
     s2.client_emulation = Some(ClientEmulationSpec {
         enabled: true,
@@ -172,11 +177,31 @@ fn expand_applies_per_model_emulation_overrides() {
         user_agent: None,
         headers: vec![],
     });
-    let targets3 = expand_provider(&s2, &selected, 3, TestMode::NonStreaming, false, &std::collections::HashMap::new());
-    assert!(targets3[0].target.emulation, "供应商配置开启应默认开");
-    let ov_off: HashMap<String, bool> = [("pi::p1::m1".to_string(), false)].into();
-    let targets4 = expand_provider(&s2, &selected, 3, TestMode::NonStreaming, false, &ov_off);
-    assert!(!targets4[0].target.emulation, "显式覆盖关应生效");
+    let targets4 = expand_provider(&s2, &selected, 3, TestMode::NonStreaming, false, &HashMap::new());
+    assert!(targets4[0].target.emulation);
+    assert_eq!(targets4[0].target.emulation_profile.as_deref(), Some("claude-code"));
+    // 显式选其他画像覆盖配置
+    let ov_x: HashMap<String, String> = [("pi::p1::m1".to_string(), "gemini-cli".to_string())].into();
+    let targets5 = expand_provider(&s2, &selected, 3, TestMode::NonStreaming, false, &ov_x);
+    assert_eq!(targets5[0].target.emulation_profile.as_deref(), Some("gemini-cli"));
+}
+
+#[test]
+fn cross_protocol_emulation_resolves() {
+    // claude 供应商（anthropic_messages）显式选 codex 画像 → 应解析成功（跨协议由用户决定）
+    let s1 = snapshot("p1", "A");
+    let selected: HashSet<String> = ["m1".to_string()].into();
+    let ov: HashMap<String, String> = [("pi::p1::m1".to_string(), "claude-code".to_string())].into();
+    let targets = expand_provider(&s1, &selected, 3, TestMode::NonStreaming, false, &ov);
+    let profile = cc_switch_model_tester_lib::emulation::resolve_profile(&targets[0].target).unwrap();
+    assert_eq!(profile.name, "claude-code");
+    // codex 画像用于 openai_chat（跨协议）也能解析
+    let ov2: HashMap<String, String> = [("pi::p1::m1".to_string(), "codex".to_string())].into();
+    let mut s3 = snapshot("p1", "A");
+    s3.protocol = ApiProtocol::OpenAiChat;
+    let targets2 = expand_provider(&s3, &selected, 3, TestMode::NonStreaming, false, &ov2);
+    let p2 = cc_switch_model_tester_lib::emulation::resolve_profile(&targets2[0].target).unwrap();
+    assert_eq!(p2.name, "codex");
 }
 
 #[test]

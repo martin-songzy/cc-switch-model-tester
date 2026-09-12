@@ -22,7 +22,7 @@
     app: TabAppType;
     catalog: () => ProviderCatalogView[];
     selected: () => Set<string>;
-    emuOverrides: Record<string, boolean>;
+    emuOverrides: Record<string, string>;
   }>();
 
   // ==================== 测试参数（人工修改后持久保存，不恢复默认） ====================

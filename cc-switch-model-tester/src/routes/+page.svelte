@@ -31,11 +31,11 @@
   /** 全局选中集合：key = providerId::modelId */
   let selected = $state<Set<string>>(new Set());
 
-  // ---- 客户端仿真：每模型开关（localStorage 持久化手动覆盖；默认跟随供应商配置）----
-  const EMU_LS_KEY = 'tester.emulation.v1';
-  let emuOverrides = $state<Record<string, boolean>>(readEmuStore());
+  // ---- 客户端仿真：每模型画像选择（localStorage 持久化；默认跟随供应商配置）----
+  const EMU_LS_KEY = 'tester.emulation.v2';
+  let emuOverrides = $state<Record<string, string>>(readEmuStore());
 
-  function readEmuStore(): Record<string, boolean> {
+  function readEmuStore(): Record<string, string> {
     try {
       return JSON.parse(localStorage.getItem(EMU_LS_KEY) ?? '{}');
     } catch {
@@ -48,26 +48,26 @@
     } catch { /* 忽略存储失败 */ }
   }
 
-  /** 模型的仿真生效值：手动覆盖 > 供应商配置默认值 */
-  function emulationOf(p: ProviderCatalogView, m: ModelView): boolean {
+  /** 可选画像（与后端 PROFILES 一致） */
+  const EMU_PROFILES = [
+    { value: '', label: '不仿真' },
+    { value: 'claude-code', label: 'Claude Code' },
+    { value: 'codex', label: 'Codex' },
+    { value: 'gemini-cli', label: 'Gemini CLI' },
+  ];
+  /** 模型的仿真生效值（画像名；'' = 关）：手动选择 > 供应商配置默认值 */
+  function emulationOf(p: ProviderCatalogView, m: ModelView): string {
     const k = selectionKey(activeTab, p.id, m.modelId);
-    return emuOverrides[k] ?? p.clientEmulation?.enabled ?? false;
+    return emuOverrides[k] ?? (p.clientEmulation?.enabled ? p.clientEmulation.profile : '');
   }
-  function toggleEmulation(p: ProviderCatalogView, m: ModelView) {
+  function setEmulation(p: ProviderCatalogView, m: ModelView, profile: string) {
     const k = selectionKey(activeTab, p.id, m.modelId);
-    emuOverrides[k] = !emulationOf(p, m);
+    emuOverrides[k] = profile;
     persistEmu();
+    openEmuMenu = null;
   }
-  /** 仿真画像与协议是否匹配（不匹配时禁用开关） */
-  const EMU_PROFILE_APIS: Record<string, string[]> = {
-    'claude-code': ['anthropic_messages'],
-    'codex': ['openai_responses'],
-    'gemini-cli': ['gemini_native', 'openai_chat'],
-  };
-  function emulationCompatible(p: ProviderCatalogView): boolean {
-    const apis = EMU_PROFILE_APIS[p.clientEmulation?.profile ?? 'claude-code'] ?? [];
-    return apis.includes(p.protocol);
-  }
+  /** 正在展开选择菜单的模型 key */
+  let openEmuMenu = $state<string | null>(null);
 
   // ---- 布局：目录区高度可拖动；测试面板可开关 ----
   let panelOpen = $state(false);
@@ -567,16 +567,27 @@
                   <button
                     type="button"
                     class="emu-toggle"
-                    class:on={emulationOf(p, m)}
-                    disabled={!emulationCompatible(p)}
+                    class:on={emulationOf(p, m) !== ''}
                     onclick={(e) => {
                       e.preventDefault();
-                      toggleEmulation(p, m);
+                      openEmuMenu = openEmuMenu === selectionKey(activeTab, p.id, m.modelId) ? null : selectionKey(activeTab, p.id, m.modelId);
                     }}
-                    title={emulationCompatible(p)
-                      ? `客户端仿真：${emulationOf(p, m) ? '开' : '关'}（模拟 ${p.clientEmulation?.profile ?? 'claude-code'} 客户端指纹）`
-                      : `仿真画像 ${p.clientEmulation?.profile ?? ''} 与该供应商协议不匹配`}
-                  >🎭 仿真{emulationOf(p, m) ? ' ✓' : ''}</button>
+                    title="客户端仿真：选择模拟的官方客户端指纹（可跨协议选择）"
+                  >{emulationOf(p, m) === '' ? '🎭 仿真' : `🎭 ${emulationOf(p, m)}`}</button>
+                  {#if openEmuMenu === selectionKey(activeTab, p.id, m.modelId)}
+                    <div class="emu-menu" role="menu">
+                      {#each EMU_PROFILES as opt (opt.value)}
+                        <button
+                          type="button"
+                          class:current={emulationOf(p, m) === opt.value}
+                          onclick={(e) => {
+                            e.preventDefault();
+                            setEmulation(p, m, opt.value);
+                          }}
+                        >{emulationOf(p, m) === opt.value ? '✓ ' : ''}{opt.label}</button>
+                      {/each}
+                    </div>
+                  {/if}
                 </label>
               {/each}
             </div>
@@ -752,6 +763,20 @@
     background: #e4edfb; border-color: #3b6ef6; color: #2a5aa8; font-weight: 600;
   }
   .emu-toggle:disabled { opacity: 0.4; cursor: not-allowed; }
+  .model-row { position: relative; }
+  .emu-menu {
+    position: absolute; right: 4px; top: 100%; z-index: 30;
+    background: #fff; border: 1px solid #dde1e8; border-radius: 6px;
+    box-shadow: 0 4px 14px rgba(20, 30, 60, 0.14);
+    display: flex; flex-direction: column; min-width: 130px; padding: 3px;
+  }
+  .emu-menu button {
+    border: none; background: none; text-align: left;
+    padding: 5px 10px; font-size: 12px; color: #3c4457; cursor: pointer;
+    border-radius: 4px; white-space: nowrap;
+  }
+  .emu-menu button:hover { background: #eef3fc; color: #2a5aa8; }
+  .emu-menu button.current { color: #2a5aa8; font-weight: 600; }
   .model-id { font-size: 12.5px; }
   .model-display { font-size: 12px; }
   .empty { text-align: center; color: #8a93a5; padding: 40px 0; }
