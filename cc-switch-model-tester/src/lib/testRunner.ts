@@ -175,20 +175,19 @@ export function buildInput(
     testAllCandidateEndpoints: boolean;
     applyBodyOverrides: boolean;
   },
+  emuOverrides: Record<string, boolean> = {},
 ): TestRunInput | { error: string } {
   const providerIds = new Set<string>();
   const modelKeys: string[] = [];
   const emulationOverrides: Record<string, boolean> = {};
   for (const p of catalog) {
     for (const m of p.models) {
-      if (selected.has(selectionKey(app, p.id, m.modelId))) {
+      const key = selectionKey(app, p.id, m.modelId);
+      if (selected.has(key)) {
         providerIds.add(p.id);
-        modelKeys.push(selectionKey(app, p.id, m.modelId));
-        // 只传显式覆盖；未覆盖的模型后端用供应商配置默认值
-        const def = p.clientEmulation?.enabled ?? false;
-        if (m.emulation !== undefined && m.emulation !== def) {
-          emulationOverrides[selectionKey(app, p.id, m.modelId)] = m.emulation;
-        }
+        modelKeys.push(key);
+        // 全量传递生效值：手动覆盖 > 供应商配置默认值（claude/codex 供应商默认关）
+        emulationOverrides[key] = emuOverrides[key] ?? p.clientEmulation?.enabled ?? false;
       }
     }
   }

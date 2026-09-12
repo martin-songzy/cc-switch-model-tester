@@ -599,7 +599,12 @@
     style={activeView === 'catalog' && panelOpen ? 'flex:1;' : 'display:none;'}
   >
       {#if !(source?.error || loadError)}
-        <TestPanel app={activeTab} catalog={() => catalogs[activeTab]} selected={() => selected} />
+        <TestPanel
+        app={activeTab}
+        catalog={() => catalogs[activeTab]}
+        selected={() => selected}
+        emuOverrides={emuOverrides}
+      />
       {:else}
         <p class="empty">数据源不可用</p>
       {/if}

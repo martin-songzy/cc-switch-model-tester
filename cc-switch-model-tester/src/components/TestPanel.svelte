@@ -18,10 +18,11 @@
   import type { ProviderCatalogView, TabAppType } from '../lib/types';
   import { selectionKey } from '../lib/types';
 
-  let { app, catalog, selected } = $props<{
+  let { app, catalog, selected, emuOverrides } = $props<{
     app: TabAppType;
     catalog: () => ProviderCatalogView[];
     selected: () => Set<string>;
+    emuOverrides: Record<string, boolean>;
   }>();
 
   // ==================== 测试参数（人工修改后持久保存，不恢复默认） ====================
@@ -69,7 +70,7 @@
       providerConcurrency,
       testAllCandidateEndpoints,
       applyBodyOverrides,
-    });
+    }, emuOverrides);
     try {
       localStorage.setItem(PARAMS_KEY, data);
     } catch {

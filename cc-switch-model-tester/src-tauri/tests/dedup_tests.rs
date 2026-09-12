@@ -3,10 +3,10 @@
 
 use cc_switch_model_tester_lib::dedup::{deduplicate, dedup_key_hash, expand_provider, ExpandedTarget};
 use cc_switch_model_tester_lib::domain::{
-    ApiProtocol, AppType, CredentialKind, CredentialValue, ProviderSnapshot, ProviderStatus,
-    TestMode, TestTarget,
+    ApiProtocol, AppType, ClientEmulationSpec, CredentialKind, CredentialValue, ProviderSnapshot,
+    ProviderStatus, TestMode, TestTarget,
 };
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 mod common;
 use common::model_snap;
@@ -151,6 +151,32 @@ fn selected_models_filter() {
     let targets = expand_provider(&s1, &selected, 3, TestMode::NonStreaming, false, &std::collections::HashMap::new());
     assert_eq!(targets.len(), 1);
     assert_eq!(targets[0].target.model_id, "m1");
+}
+
+#[test]
+fn expand_applies_per_model_emulation_overrides() {
+    let s1 = snapshot("p1", "A");
+    let selected: HashSet<String> = ["m1".to_string()].into();
+    // 前端 selectionKey 格式：app::providerId::modelId；显式开 → 生效
+    let ov: HashMap<String, bool> = [("pi::p1::m1".to_string(), true)].into();
+    let targets = expand_provider(&s1, &selected, 3, TestMode::NonStreaming, false, &ov);
+    assert!(targets[0].target.emulation, "显式覆盖开应生效");
+    // 无覆盖且供应商无 clientEmulation 配置 → 默认关
+    let targets2 = expand_provider(&s1, &selected, 3, TestMode::NonStreaming, false, &std::collections::HashMap::new());
+    assert!(!targets2[0].target.emulation);
+    // 供应商配置 enabled=true → 默认开
+    let mut s2 = snapshot("p1", "A");
+    s2.client_emulation = Some(ClientEmulationSpec {
+        enabled: true,
+        profile: "claude-code".into(),
+        user_agent: None,
+        headers: vec![],
+    });
+    let targets3 = expand_provider(&s2, &selected, 3, TestMode::NonStreaming, false, &std::collections::HashMap::new());
+    assert!(targets3[0].target.emulation, "供应商配置开启应默认开");
+    let ov_off: HashMap<String, bool> = [("pi::p1::m1".to_string(), false)].into();
+    let targets4 = expand_provider(&s2, &selected, 3, TestMode::NonStreaming, false, &ov_off);
+    assert!(!targets4[0].target.emulation, "显式覆盖关应生效");
 }
 
 #[test]
