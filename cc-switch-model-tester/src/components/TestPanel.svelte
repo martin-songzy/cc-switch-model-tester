@@ -70,7 +70,7 @@
       providerConcurrency,
       testAllCandidateEndpoints,
       applyBodyOverrides,
-    }, emuOverrides);
+    });
     try {
       localStorage.setItem(PARAMS_KEY, data);
     } catch {
@@ -509,7 +509,7 @@
       providerConcurrency,
       testAllCandidateEndpoints,
       applyBodyOverrides,
-    });
+    }, emuOverrides);
     if ('error' in input) {
       panelError = input.error;
       return;
