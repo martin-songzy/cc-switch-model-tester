@@ -46,6 +46,29 @@ pub struct BuiltHeaders {
     pub dropped_invalid: Vec<String>,
 }
 
+/// 将 beta flag 合并进 anthropic-beta 头（逗号分隔，去重；无该头则新增）。
+pub fn merge_beta_header(flag: &str, out: &mut Vec<(String, String)>) {
+    const KEY: &str = "anthropic-beta";
+    let flag_trim = flag.trim();
+    if flag_trim.is_empty() {
+        return;
+    }
+    if let Some(existing) = out.iter_mut().find(|(k, _)| k.eq_ignore_ascii_case(KEY)) {
+        let mut flags: Vec<String> = existing
+            .1
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+        if !flags.iter().any(|f| f.eq_ignore_ascii_case(flag_trim)) {
+            flags.push(flag_trim.to_string());
+        }
+        existing.1 = flags.join(",");
+    } else {
+        out.push((KEY.to_string(), flag_trim.to_string()));
+    }
+}
+
 /// 组装最终请求 Header。
 pub fn build_request_headers(
     target: &TestTarget,
@@ -66,6 +89,10 @@ pub fn build_request_headers(
     push("user-agent", app_user_agent.to_string(), &mut out);
     if target.protocol == ApiProtocol::AnthropicMessages {
         push("anthropic-version", anthropic_version.to_string(), &mut out);
+        // cc-switch 模型标记 [1M] → 启用 1M 上下文 beta（与仿真等其他 beta 逗号合并）
+        if target.id_markers.iter().any(|m| m.eq_ignore_ascii_case("1M")) {
+            merge_beta_header("context-1m-2025-08-07", &mut out);
+        }
     }
 
     // 2. 供应商字面量 Header（过滤保护项与非法项；同名覆盖协议固定值）
@@ -144,6 +171,7 @@ mod tests {
             emulation_profile: None,
             client_emulation: None,
             local_proxy_body_patch: None,
+            id_markers: vec![],
             full_url: false,
             compat: serde_json::Value::Null,
         }
@@ -157,6 +185,39 @@ mod tests {
         assert!(b.headers.iter().any(|(k, v)| k == "anthropic-version" && v == "2023-06-01"));
         assert!(b.headers.iter().any(|(k, v)| k == "authorization" && v == "Bearer sk-test"));
         assert!(!b.headers.iter().any(|(k, _)| k == "x-api-key"));
+    }
+
+    #[test]
+    fn one_m_marker_adds_context_beta() {
+        let mut t = target(ApiProtocol::AnthropicMessages, vec![], Some(CredentialKind::AuthToken));
+        t.id_markers = vec!["1M".into()];
+        let b = build_request_headers(&t, "tester/0.1", "2023-06-01");
+        assert!(b.headers.iter().any(
+            |(k, v)| k == "anthropic-beta" && v.contains("context-1m-2025-08-07")
+        ));
+        // 无标记 → 无 beta 头
+        let b2 = build_request_headers(&target(ApiProtocol::AnthropicMessages, vec![], None), "tester/0.1", "2023-06-01");
+        assert!(!b2.headers.iter().any(|(k, _)| k == "anthropic-beta"));
+    }
+
+    #[test]
+    fn beta_merges_between_build_and_emulation() {
+        use crate::emulation;
+        let mut t = target(ApiProtocol::AnthropicMessages, vec![], Some(CredentialKind::AuthToken));
+        t.id_markers = vec!["1M".into()];
+        t.emulation = true;
+        t.emulation_profile = Some("claude-code".into());
+        let mut req = crate::protocol::build_request(&t, "hi", crate::domain::TestMode::NonStreaming, 64).unwrap();
+        let profile = emulation::resolve_profile(&t).unwrap();
+        emulation::apply_client_emulation(&mut req, &t, profile, "run-x");
+        let beta = req
+            .headers
+            .iter()
+            .find(|(k, _)| k.eq_ignore_ascii_case("anthropic-beta"))
+            .map(|(_, v)| v.clone())
+            .unwrap();
+        assert!(beta.contains("claude-code-20250219"), "画像 beta 应存在");
+        assert!(beta.contains("context-1m-2025-08-07"), "1M beta 不应被画像覆盖");
     }
 
     #[test]

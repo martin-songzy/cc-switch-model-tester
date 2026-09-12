@@ -447,6 +447,39 @@ fn set_emulation_headers(
                         continue;
                     }
                 }
+                if k.eq_ignore_ascii_case("anthropic-beta") {
+                    // beta 头合并而非覆盖：保留 build 阶段注入的模型标记 beta（如 context-1m）
+                    let existing = req
+                        .headers
+                        .iter()
+                        .find(|(hk, _)| hk.eq_ignore_ascii_case("anthropic-beta"))
+                        .map(|(_, hv)| hv.clone());
+                    match existing {
+                        Some(cur) => {
+                            let mut flags: Vec<String> = cur
+                                .split(',')
+                                .map(|s| s.trim().to_string())
+                                .filter(|s| !s.is_empty())
+                                .collect();
+                            for f in vv.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()) {
+                                if !flags.iter().any(|x| x.eq_ignore_ascii_case(&f)) {
+                                    flags.push(f);
+                                }
+                            }
+                            if let Some(h) = req
+                                .headers
+                                .iter_mut()
+                                .find(|(hk, _)| hk.eq_ignore_ascii_case("anthropic-beta"))
+                            {
+                                h.1 = flags.join(",");
+                            }
+                        }
+                        None => {
+                            req.headers.push((k.clone(), vv.clone()));
+                        }
+                    }
+                    continue;
+                }
                 if let Some(h) = req.headers.iter_mut().find(|(hk, _)| hk.eq_ignore_ascii_case(k)) {
                     h.1 = vv.clone();
                 } else {
@@ -527,6 +560,7 @@ mod tests {
             emulation,
             emulation_profile: None,
             client_emulation: spec,
+            id_markers: vec![],
             local_proxy_body_patch: None,
             full_url: false,
             compat: serde_json::Value::Null,

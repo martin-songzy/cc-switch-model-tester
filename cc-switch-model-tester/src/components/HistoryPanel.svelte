@@ -479,14 +479,15 @@
   .modal-mask {
     position: fixed;
     inset: 0;
-    background: rgba(20, 30, 60, 0.35);
+    background: rgba(20, 30, 60, 0.55);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 50;
   }
   .modal {
-    background: #fff;
+    background-color: #ffffff;
+    border: 1px solid #e3e6ec;
     border-radius: 12px;
     width: min(720px, 90vw);
     max-height: 80vh;

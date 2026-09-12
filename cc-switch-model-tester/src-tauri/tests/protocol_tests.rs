@@ -22,9 +22,10 @@ fn target(protocol: ApiProtocol, base: &str) -> TestTarget {
         headers: vec![],
         custom_user_agent: None,
         emulation: false,
-            emulation_profile: None,
+        emulation_profile: None,
         client_emulation: None,
         local_proxy_body_patch: None,
+        id_markers: vec![],
         full_url: false,
         compat: serde_json::Value::Null,
     }

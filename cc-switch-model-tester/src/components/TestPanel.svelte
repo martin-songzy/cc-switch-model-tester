@@ -1087,12 +1087,12 @@
 
   /* 弹窗 */
   .modal-mask {
-    position: fixed; inset: 0; background: rgba(24, 28, 36, 0.35);
+    position: fixed; inset: 0; background: rgba(24, 28, 36, 0.55);
     display: flex; align-items: center; justify-content: center; z-index: 50;
   }
   .modal {
-    background: #fff; border-radius: 10px; padding: 18px 20px; max-width: 720px;
-    max-height: 78vh; overflow: auto; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+    background-color: #ffffff; border: 1px solid #e3e6ec; border-radius: 10px; padding: 18px 20px; max-width: 720px;
+    max-height: 78vh; overflow: auto; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
   }
   .modal h3 { margin: 0 0 8px; font-size: 15px; }
   .modal-desc { font-size: 13px; color: #3c4457; margin: 0 0 10px; }

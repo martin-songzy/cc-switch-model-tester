@@ -289,6 +289,8 @@ pub struct TestTarget {
     /// 用户显式选择的画像名；None = 按供应商配置/协议默认推导
     pub emulation_profile: Option<String>,
     pub client_emulation: Option<ClientEmulationSpec>,
+    /// 从模型 ID 剥离的 cc-switch 展示标记（如 [1M]），协议层用于启用对应 beta
+    pub id_markers: Vec<String>,
     /// cc-switch 本地代理 body 改写规则（应用与否由全局开关控制）
     pub local_proxy_body_patch: Option<serde_json::Value>,
     pub full_url: bool,
@@ -329,6 +331,7 @@ impl ProviderSnapshot {
             emulation: false, // 由调度层按每模型选择赋值
             emulation_profile: None,
             client_emulation: self.client_emulation.clone(),
+            id_markers: model.id_markers.clone(),
             local_proxy_body_patch: self.local_proxy_body_patch.clone(),
             full_url: self.full_url,
             compat: model.compat.clone(),

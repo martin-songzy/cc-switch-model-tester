@@ -634,7 +634,6 @@
         （全部标签页共 {totalSelected}）
       {/if}
     </span>
-    <span class="muted">测试执行将在后续版本提供（M4）</span>
   </footer>
 </main>
 
