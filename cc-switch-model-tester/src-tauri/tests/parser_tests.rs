@@ -265,6 +265,21 @@ fn claude_model_id_markers_stripped() {
 }
 
 #[test]
+fn claude_same_id_merges_markers_across_env_keys() {
+    // HAIKU 无标记在前、SONNET 带 [1M] 在后：同 id 去重必须合并 markers，不能丢弃
+    let sc = json!({
+        "env": { "ANTHROPIC_BASE_URL": "https://x", "ANTHROPIC_AUTH_TOKEN": "t",
+                 "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-x",
+                 "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-x[1M]" }
+    });
+    let snap = parse_provider(AppType::Claude, "p", "P", &sc.to_string(), "{}", Vec::new());
+    assert_eq!(snap.status, ProviderStatus::Ready);
+    assert_eq!(snap.models.len(), 1, "同 id 模型只保留一条");
+    assert_eq!(snap.models[0].model_id, "claude-x");
+    assert_eq!(snap.models[0].id_markers, vec!["1M"], "后出现的 [1M] 标记必须被合并保留");
+}
+
+#[test]
 fn claude_managed_by_base_url() {
     let sc = json!({
         "env": { "ANTHROPIC_BASE_URL": "https://api.githubcopilot.com", "ANTHROPIC_MODEL": "m",

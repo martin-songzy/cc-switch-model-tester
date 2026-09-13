@@ -43,6 +43,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let filter = args.get(1).cloned().unwrap_or_else(|| "zzzcoding".into());
     let profile_name = args.get(2).cloned().unwrap_or_else(|| "claude-code".into());
     let use_proxy = args.iter().any(|a| a == "proxy");
+    // 可选第 4 参：限定 app_type（claude/codex/pi），避免同名供应商误命中
+    let app_filter = args.get(3).cloned();
     let home = std::env::var("USERPROFILE").unwrap_or_default();
     let conn = Connection::open_with_flags(
         format!("{home}\\.cc-switch\\cc-switch.db"),
@@ -63,7 +65,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect();
     let (id, name, app_raw, sc_raw, meta_raw) = rows
         .into_iter()
-        .find(|(i, n, _, sc, _)| n.contains(&filter) || sc.contains(&filter) || i.contains(&filter))
+        .find(|(i, n, app, sc, _)| {
+            if let Some(want) = &app_filter {
+                if app != want {
+                    return false;
+                }
+            }
+            n.contains(&filter) || sc.contains(&filter) || i.contains(&filter)
+        })
         .expect("未找到供应商");
     let app = cc_switch_model_tester_lib::domain::AppType::from_db_str(&app_raw)
         .ok_or("未知 app_type")?;

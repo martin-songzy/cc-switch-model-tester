@@ -97,16 +97,33 @@ pub(super) fn parse(
     };
 
     // ---- 模型集合：全部模型字段加入后去重，剥离 [1M] 类展示标记 ----
+    // 同 id 去重时合并 markers（如 HAIKU=claude-opus-4-7 与 SONNET=claude-opus-4-7[1M]
+    // 指向同一模型，应保留 [1M] 能力标记，否则会丢失 1M 上下文 beta 注入）
     let mut models = Vec::new();
-    let mut seen = std::collections::HashSet::new();
+    let mut index: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
     if let Some(env) = env {
         for key in MODEL_ENV_KEYS {
             if let Some(raw) = nonempty_str(env.get(key)) {
                 let (id, markers) = crate::domain::strip_model_id_markers(raw);
-                if id.is_empty() || !seen.insert(id.clone()) {
+                if id.is_empty() {
                     continue;
                 }
-                models.push(super::model_with_markers(id, markers));
+                match index.get(&id) {
+                    Some(&i) => {
+                        if !markers.is_empty() {
+                            let m: &mut crate::domain::ModelSnapshot = &mut models[i];
+                            for mk in markers {
+                                if !m.id_markers.iter().any(|x| x.eq_ignore_ascii_case(&mk)) {
+                                    m.id_markers.push(mk);
+                                }
+                            }
+                        }
+                    }
+                    None => {
+                        index.insert(id.clone(), models.len());
+                        models.push(super::model_with_markers(id, markers));
+                    }
+                }
             }
         }
     }
