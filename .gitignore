@@ -21,3 +21,5 @@ tmp_*.log
 # 本地环境
 .env
 tmp_diag*.mjs
+tmp_*.mjs
+install-rust-d.ps1
