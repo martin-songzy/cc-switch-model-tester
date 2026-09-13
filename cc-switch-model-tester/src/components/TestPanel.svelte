@@ -167,9 +167,6 @@
   /** 点击测试结果行后展开的分组（null = 明细区收起） */
   let selectedGroup = $state<string | null>(null);
   /** 明细区高度：null = 自动填满到底部；拖动后为固定像素 */
-  let detailHeightPx = $state<number | null>(null);
-  let detailAreaH = $state(0);
-  let detailResizing = $state<{ startY: number; startH: number } | null>(null);
   /** 点击明细行弹出的详情浮窗 */
   let detailModal = $state<AttemptRow | null>(null);
 
@@ -466,21 +463,6 @@
     return s ? `${s.providerName} · ${s.modelId}` : '';
   });
 
-  function startDetailResize(e: MouseEvent) {
-    e.preventDefault();
-    detailResizing = { startY: e.clientY, startH: detailHeightPx ?? detailAreaH ?? 300 };
-  }
-
-  function onDetailMove(e: MouseEvent) {
-    if (!detailResizing) return;
-    // 分隔条在明细区上方：向下拖 = 高度减少
-    detailHeightPx = Math.min(1600, Math.max(150, detailResizing.startH - (e.clientY - detailResizing.startY)));
-  }
-
-  function onDetailUp() {
-    detailResizing = null;
-  }
-
   function startResize(e: MouseEvent, t: TableKey, key: string) {
     e.preventDefault();
     e.stopPropagation();
@@ -683,16 +665,14 @@
 <svelte:window
   onmousemove={(e) => {
     onWindowMove(e);
-    onDetailMove(e);
   }}
   onmouseup={() => {
     onWindowUp();
-    onDetailUp();
   }}
   onclick={closePopIfOutside}
 />
 
-<div class="panel" class:has-detail={selectedGroup !== null}>
+<div class="panel">
   <!-- 参数区 -->
   <div class="params">
     <label>次数
@@ -863,94 +843,7 @@
     </div>
   </div>
 
-  <!-- ==================== 测试明细（点击测试结果行展开/收起，高度可拖动） ==================== -->
-  {#if selectedGroup}
-    <button type="button"
-      class="detail-splitter"
-      aria-label="拖动调整明细区高度"
-      onmousedown={startDetailResize}
-      title="拖动调整明细区高度"
-    ></button>
-    <div
-      class="table-block detail-area"
-      style={detailHeightPx ? `height:${detailHeightPx}px; flex:none;` : 'flex:1 1 auto; min-height:180px;'}
-      bind:clientHeight={detailAreaH}
-    >
-      <div class="table-head">
-        <h4>测试明细 — {selectedGroupTitle}{detailRows.length > 0 ? `（${detailRows.length} 条）` : ''}</h4>
-        <span class="muted hint">点击任意行可展开完整提示词与响应摘要</span>
-        <span class="spacer"></span>
-        {#if activeFilterCount('detail') > 0}
-          <button class="btn xs" onclick={() => clearAllFilters('detail')}>清除筛选（{activeFilterCount('detail')}）</button>
-        {/if}
-        <button class="btn xs pop-trigger" onclick={(e) => toggleColsMenu(e, 'detail')}>⚙ 列</button>
-        <button class="btn xs" onclick={() => (selectedGroup = null)}>收起 ✕</button>
-        {#if openPop && openPop.table === 'detail' && openPop.kind === 'cols'}
-          <div class="popover cols-pop">
-            {#each DETAIL_COLS as c}
-              <label><input type="checkbox" checked={visible.detail[c.key]} onchange={() => toggleColVisible('detail', c.key)} /> {c.label}</label>
-            {/each}
-          </div>
-        {/if}
-      </div>
-
-    <div class="table-wrap">
-      <table style="width:{tableWidth('detail')}px">
-        <thead>
-          <tr>
-            {#each visibleCols('detail') as c (c.key)}
-              <th style="width:{widths.detail[c.key]}px; min-width:{widths.detail[c.key]}px;">
-                <div class="th-inner">
-                  <span class="th-label" role="button" tabindex="0" onkeydown={(e) => { if (e.key === 'Enter') cycleSort('detail', c.key); }} onclick={() => cycleSort('detail', c.key)} title="点击排序">
-                    {c.label}
-                    {#if detailSort && detailSort.key === c.key}
-                      <span class="sort-mark">{detailSort.dir === 1 ? '▲' : '▼'}</span>
-                    {/if}
-                  </span>
-                  {#if true}
-                    <button
-                      class="funnel pop-trigger {hasActiveFilter('detail', c.key) ? 'on' : ''}"
-                      onclick={(e) => toggleFilterPop(e, 'detail', c.key)}
-                      title={hasActiveFilter('detail', c.key) ? '该列有筛选条件（点击查看/修改）' : '筛选'}
-                    >{hasActiveFilter('detail', c.key) ? '▼' : '▽'}</button>
-                  {/if}
-                  <button type="button" class="resizer" aria-label="调整列宽" onmousedown={(e) => startResize(e, 'detail', c.key)}></button>
-                </div>
-              </th>
-            {/each}
-          </tr>
-        </thead>
-        <tbody>
-          {#each detailRows as a (a.uid)}
-            <tr class="clickable" onclick={() => (detailModal = a)} title="点击查看完整提示词与响应">
-              {#each visibleCols('detail') as c (c.key)}
-                <td class="cell" style="max-width:{widths.detail[c.key]}px;">
-                  {#if c.key === 'result'}
-                    <span class="badge {a.status === 'success' ? 'ok' : 'err'}">{detailCells(a).result}</span>
-                  {:else if c.key === 'no'}
-                    {a.attemptNo}
-                  {:else if c.key === 'http'}
-                    {a.httpStatus ?? '—'}
-                  {:else if c.key === 'ms'}
-                    {a.totalMs} ms
-                  {:else if c.key === 'msg'}
-                    <span class="ellip" title={String(detailCells(a).msg ?? '')}>{detailCells(a).msg ?? '—'}</span>
-                  {:else}
-                    <span class="ellip" title={String(detailCells(a)[c.key] ?? '')}>{detailCells(a)[c.key] ?? '—'}</span>
-                  {/if}
-                </td>
-              {/each}
-            </tr>
-          {/each}
-          {#if detailRows.length === 0}
-            <tr><td class="empty" colspan={visibleCols('detail').length}>该组暂无明细</td></tr>
-          {/if}
-        </tbody>
-      </table>
-    </div>
-  </div>
-  {/if}
-
+  <!-- ==================== 组明细弹窗（点击测试结果行直接弹窗，不再使用可拖动浮动窗） ==================== -->
   <!-- 根级 fixed 筛选弹窗（不受表格滚动容器裁剪，左对齐到漏斗按钮） -->
   {#if openPop && openPop.kind === 'filter'}
     <div class="popover filter-pop fixed-pop" style="left:{openPop.anchor.left}px; top:{openPop.anchor.top}px">
@@ -1003,6 +896,82 @@
       {/if}
     </div>
   {/if}
+  <!-- 组明细弹窗：点击测试结果行直接弹出（取代原可拖动明细区） -->
+  {#if !detailModal && selectedGroup}
+    <div
+      class="modal-mask"
+      role="presentation"
+      onclick={(e) => {
+        if ((e.target as HTMLElement).classList.contains('modal-mask')) selectedGroup = null;
+      }}
+    >
+      <div class="modal modal-wide">
+        <div class="modal-head">
+          <h3>测试明细 — {selectedGroupTitle}{detailRows.length > 0 ? `（${detailRows.length} 条）` : ''}</h3>
+          <span class="muted hint">点击明细行查看完整提示词与响应摘要</span>
+          <span class="spacer"></span>
+          {#if activeFilterCount('detail') > 0}
+            <button class="btn xs" onclick={() => clearAllFilters('detail')}>清除筛选（{activeFilterCount('detail')}）</button>
+          {/if}
+          <button class="btn xs" onclick={() => (selectedGroup = null)}>关闭 ✕</button>
+        </div>
+        <div class="modal-table-wrap">
+          <table style="width:{tableWidth('detail')}px">
+            <thead>
+              <tr>
+                {#each visibleCols('detail') as c (c.key)}
+                  <th style="width:{widths.detail[c.key]}px; min-width:{widths.detail[c.key]}px;">
+                    <div class="th-inner">
+                      <span class="th-label" role="button" tabindex="0" onkeydown={(e) => { if (e.key === 'Enter') cycleSort('detail', c.key); }} onclick={() => cycleSort('detail', c.key)} title="点击排序">
+                        {c.label}
+                        {#if detailSort && detailSort.key === c.key}
+                          <span class="sort-mark">{detailSort.dir === 1 ? '▲' : '▼'}</span>
+                        {/if}
+                      </span>
+                      <button
+                        type="button"
+                        class="funnel pop-trigger {hasActiveFilter('detail', c.key) ? 'on' : ''}"
+                        onclick={(e) => toggleFilterPop(e, 'detail', c.key)}
+                        title={hasActiveFilter('detail', c.key) ? '该列有筛选条件（点击查看/修改）' : '筛选'}
+                      >{hasActiveFilter('detail', c.key) ? '▼' : '▽'}</button>
+                      <button type="button" class="resizer" aria-label="调整列宽" onmousedown={(e) => startResize(e, 'detail', c.key)}></button>
+                    </div>
+                  </th>
+                {/each}
+              </tr>
+            </thead>
+            <tbody>
+              {#each detailRows as a (a.uid)}
+                <tr class="clickable" onclick={() => (detailModal = a)} title="点击查看完整提示词与响应">
+                  {#each visibleCols('detail') as c (c.key)}
+                    <td class="cell" style="max-width:{widths.detail[c.key]}px;">
+                      {#if c.key === 'result'}
+                        <span class="badge {a.status === 'success' ? 'ok' : 'err'}">{detailCells(a).result}</span>
+                      {:else if c.key === 'no'}
+                        {a.attemptNo}
+                      {:else if c.key === 'http'}
+                        {a.httpStatus ?? '—'}
+                      {:else if c.key === 'ms'}
+                        {a.totalMs} ms
+                      {:else if c.key === 'msg'}
+                        <span class="ellip" title={String(detailCells(a).msg ?? '')}>{detailCells(a).msg ?? '—'}</span>
+                      {:else}
+                        <span class="ellip" title={String(detailCells(a)[c.key] ?? '')}>{detailCells(a)[c.key] ?? '—'}</span>
+                      {/if}
+                    </td>
+                  {/each}
+                </tr>
+              {/each}
+              {#if detailRows.length === 0}
+                <tr><td class="empty" colspan={visibleCols('detail').length}>该组暂无明细</td></tr>
+              {/if}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  {/if}
+
   <!-- 明细详情浮窗 -->
   {#if detailModal}
     <div
@@ -1111,9 +1080,8 @@
   .table-head { display: flex; align-items: center; gap: 8px; position: relative; }
   h4 { margin: 0; font-size: 13px; color: #3c4457; }
   .hint { font-size: 11.5px; }
-  /* 结果表弹性高度：无明细区时自动填满到底部；打开明细后回到 34vh 上限 */
+  /* 结果表弹性高度：自动填满到底部（明细改为弹窗后无高度上限） */
   .table-wrap { overflow: auto; flex: 1; min-height: 160px; border: 1px solid #eef0f4; border-radius: 6px; }
-  .panel.has-detail .table-wrap { flex: none; max-height: 34vh; min-height: 120px; }
   table { border-collapse: collapse; font-size: 12.5px; table-layout: fixed; }
   th, td { text-align: left; padding: 0; border-bottom: 1px solid #f0f2f5; }
   th {
@@ -1169,17 +1137,12 @@
   }
   /* 明细详情浮窗 */
   .detail-modal { width: 760px; max-width: 92vw; }
-  .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .modal-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
   .modal-head h3 { margin: 0; font-size: 14px; }
+  /* 组明细弹窗：宽版 + 内嵌表格滚动区 */
+  .modal.modal-wide { width: min(1280px, 95vw); max-width: none; max-height: 88vh; }
+  .modal-table-wrap { overflow: auto; max-height: calc(88vh - 90px); border: 1px solid #eef0f4; border-radius: 6px; }
 
-  /* 明细区拖动分隔条 */
-  .detail-splitter {
-    border: none; padding: 0;
-    border: none; padding: 0;
-    height: 6px; border-radius: 3px; background: #e3e6ec; cursor: row-resize; flex: none;
-  }
-  .detail-splitter:hover { background: #3b6ef6; }
-  .detail-area .table-wrap { max-height: none; height: calc(100% - 30px); }
   tr.clickable.selected td { background: #eaf1ff; }
   .cols-pop { display: flex; flex-direction: column; gap: 4px; }
   .cols-pop label { display: flex; align-items: center; gap: 6px; font-size: 12.5px; cursor: pointer; }
