@@ -1033,10 +1033,13 @@
 
 <style>
   .panel { display: flex; flex-direction: column; gap: 10px; min-height: 0; height: 100%; }
-  .params { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .params label { display: flex; align-items: center; gap: 5px; font-size: 13px; color: #3c4457; }
-  .params input[type='number'], .params select {
-    border: 1px solid #c9cfda; border-radius: 5px; padding: 4px 8px; font-size: 13px; width: 90px;
+  .params { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .params label { display: flex; align-items: center; gap: 4px; font-size: 13px; color: #3c4457; }
+  .params input[type='number'] {
+    border: 1px solid #c9cfda; border-radius: 5px; padding: 4px 6px; font-size: 13px; width: 64px;
+  }
+  .params select {
+    border: 1px solid #c9cfda; border-radius: 5px; padding: 4px 6px; font-size: 13px; width: 96px;
   }
   .params input[type='checkbox'] { width: 14px; height: 14px; }
   .chk { user-select: none; }

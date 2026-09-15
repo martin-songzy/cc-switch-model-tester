@@ -259,6 +259,20 @@
   }
 
   /** “当前结果”＝每个供应商当前可见的模型（与界面显示一致） */
+  /** 工具栏“全选”复选框状态：当前筛选结果里可测试模型的 已选/总数 */
+  const filteredSelStats = $derived.by(() => {
+    let total = 0;
+    let sel = 0;
+    for (const p of filtered) {
+      if (!isTestableBase(p)) continue;
+      for (const m of visibleModels(p)) {
+        total++;
+        if (selected.has(selectionKey(activeTab, p.id, m.modelId))) sel++;
+      }
+    }
+    return { total, sel };
+  });
+
   function selectAllFiltered() {
     const next = new Set(selected);
     for (const p of filtered) {
@@ -353,29 +367,6 @@
 <svelte:window onmousemove={onWindowMousemove} onmouseup={onWindowMouseup} />
 
 <main>
-  <header>
-    <div class="brand">
-      <h1>cc-switch Model Tester</h1>
-      {#if appInfo}<span class="version">v{appInfo.version} ({appInfo.commit})</span>{/if}
-    </div>
-
-    <div class="source" class:bad={!!source?.error}>
-      {#if !source}
-        <span class="muted">正在读取数据源…</span>
-      {:else if source.error}
-        <span class="badge err">数据源异常</span>
-        <span class="muted">{source.error.message}</span>
-      {:else}
-        <span class="badge ok">已连接</span>
-        <span class="mono path" title={source.path}>{source.path}</span>
-        <span class="badge">schema {source.schemaVersion}</span>
-      {/if}
-    </div>
-
-    <button class="btn" onclick={refreshAll} disabled={loading}>
-      {loading ? '加载中…' : '重新加载'}
-    </button>
-  </header>
 
   {#if loadError}
     <div class="banner err-banner">加载失败：{loadError}</div>
@@ -408,23 +399,26 @@
       class:active={activeView === 'settings'}
       onclick={() => (activeView = 'settings')}
     >设置</button>
+    <button
+      class="tab"
+      onclick={refreshAll}
+      disabled={loading}
+      title="重新读取 cc-switch 数据源"
+    >{loading ? '加载中…' : '重新加载'}</button>
   </nav>
 
   <div class="toolbar" style={activeView === 'catalog' ? '' : 'display:none;'}>
-    <input
-      class="search"
-      type="search"
-      placeholder="搜索：支持多关键词，空格分隔需同时满足（如 gpt 6）…"
-      bind:value={search}
-    />
-    <label class="filter">
+    <label class="filter" title="勾选＝选中当前筛选结果里全部可测试模型；取消＝清空">
       <input
         type="checkbox"
-        checked={statusFilter === 'ready'}
-        onchange={(e) => (statusFilter = e.currentTarget.checked ? 'ready' : 'all')}
+        checked={filteredSelStats.total > 0 && filteredSelStats.sel === filteredSelStats.total}
+        indeterminate={filteredSelStats.sel > 0 && filteredSelStats.sel < filteredSelStats.total}
+        onchange={(e) => (e.currentTarget.checked ? selectAllFiltered() : clearSelection())}
       />
-      只看可测试
+      全选
     </label>
+    <button class="btn sm" onclick={invertFiltered}>反选</button>
+    <button class="btn sm" onclick={clearSelection}>清空</button>
     <button
       class="btn sm"
       onclick={() => {
@@ -439,14 +433,32 @@
     >
       {filtered.some((p) => isTestableBase(p) && !expanded[p.id]) ? '全部展开' : '全部折叠'}
     </button>
-    <div class="spacer"></div>
-    <button class="btn sm" onclick={selectAllFiltered}>全选当前结果</button>
-    <button class="btn sm" onclick={invertFiltered}>反选</button>
-    <button class="btn sm" onclick={clearSelection}>清空</button>
+    <label class="filter">
+      <input
+        type="checkbox"
+        checked={statusFilter === 'ready'}
+        onchange={(e) => (statusFilter = e.currentTarget.checked ? 'ready' : 'all')}
+      />
+      只看可测试
+    </label>
+    <span class="spacer"></span>
+    <input
+      class="search"
+      type="search"
+      placeholder="搜索：多关键词，空格分隔需同时满足…"
+      bind:value={search}
+    />
     <button class="btn sm" class:active={catalogOpen} onclick={() => (catalogOpen = !catalogOpen)}>
       {catalogOpen ? '收起目录' : '打开目录'}
     </button>
-    <button class="btn sm" class:active={panelOpen} onclick={() => (panelOpen = !panelOpen)}>
+    <button
+      class="btn sm"
+      class:active={panelOpen}
+      onclick={() => {
+        panelOpen = !panelOpen;
+        if (panelOpen) catalogOpen = false; // 打开测试面板时默认收起目录，避免挤占空间
+      }}
+    >
       {panelOpen ? '收起测试面板' : '打开测试面板'}
     </button>
   </div>
@@ -532,6 +544,12 @@
             {/if}
 
             <span class="spacer"></span>
+            {#if p.warnings.length > 0}
+              <span
+    class="warn-dot"
+    title={p.warnings.join('\n')}
+  >⚠</span>
+            {/if}
             <span class="muted models-count">{
               searchActive && !providerMatches(p)
                 ? `${visibleModels(p).length}/${p.models.length} 模型`
@@ -542,9 +560,6 @@
           {#if p.error}
             <div class="prov-detail err-text">错误：{p.error}</div>
           {/if}
-          {#each p.warnings as w}
-            <div class="prov-detail warn-text" title={w}>⚠ {w}</div>
-          {/each}
 
           {#if (searchActive || expanded[p.id]) && visibleModels(p).length > 0}
             <div class="models">
@@ -634,6 +649,16 @@
         （全部标签页共 {totalSelected}）
       {/if}
     </span>
+    <span class="foot-status">
+      {#if source}
+        <span
+          class="badge {source.error ? 'err' : 'ok'}"
+          title={source.error ? source.error.message : source.path}
+        >{source.error ? '数据源异常' : '已连接'}</span>
+        {#if !source.error}<span class="badge">schema {source.schemaVersion}</span>{/if}
+      {/if}
+      {#if appInfo}<span class="version">v{appInfo.version} ({appInfo.commit})</span>{/if}
+    </span>
   </footer>
 </main>
 
@@ -655,17 +680,7 @@
     box-sizing: border-box;
     gap: 10px;
   }
-  header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .brand { display: flex; align-items: baseline; gap: 8px; }
-  h1 { font-size: 17px; margin: 0; white-space: nowrap; }
   .version { color: #8a93a5; font-size: 12px; }
-  .source { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; flex-wrap: wrap; }
-  .path { max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .badge {
     background: #e8ebf0; border-radius: 10px; padding: 2px 10px;
     font-size: 12px; white-space: nowrap;
@@ -718,10 +733,10 @@
     border: 1px solid #e3e6ec; border-radius: 8px; padding: 10px 12px;
   }
   .btn.active { background: #e4edfb; border-color: #3b6ef6; color: #2a5aa8; }
-  .provider { border-bottom: 1px solid #f0f2f5; padding: 6px 14px; }
+  .provider { border-bottom: 1px solid #f0f2f5; padding: 3px 14px; }
   .provider:last-child { border-bottom: none; }
   .provider.disabled { opacity: 0.62; }
-  .prov-row { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+  .prov-row { display: flex; align-items: center; gap: 8px; min-height: 24px; }
   .prov-check { width: 15px; height: 15px; cursor: pointer; }
   .check-placeholder { width: 15px; flex: none; }
   .expand {
@@ -738,14 +753,14 @@
   .prov-id { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .models-count { font-size: 12px; white-space: nowrap; }
   .prov-detail {
-    font-size: 12px; margin: 2px 0 2px 45px;
+    font-size: 12px; margin: 1px 0 1px 45px;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .err-text { color: #b03030; }
-  .warn-text { color: #9a6b0f; }
-  .models { margin: 4px 0 4px 45px; display: flex; flex-direction: column; gap: 2px; }
+  .warn-dot { color: #9a6b0f; cursor: help; font-size: 13px; flex: none; }
+  .models { margin: 2px 0 2px 45px; display: flex; flex-direction: column; gap: 0; }
   .model-row {
-    display: flex; align-items: center; gap: 8px; padding: 3px 8px;
+    display: flex; align-items: center; gap: 8px; padding: 2px 8px;
     border-radius: 5px; cursor: pointer; font-size: 13px;
   }
   .model-row:hover { background: #f4f6fa; }
@@ -783,4 +798,5 @@
     display: flex; justify-content: space-between; align-items: center;
     font-size: 13px; color: #3c4457;
   }
+  .foot-status { display: flex; align-items: center; gap: 8px; }
 </style>
