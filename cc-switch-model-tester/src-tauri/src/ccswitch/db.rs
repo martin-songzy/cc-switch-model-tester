@@ -18,6 +18,22 @@ use crate::error::{AppError, AppErrorKind};
 pub const SCHEMA_MIN: i32 = 16;
 pub const SCHEMA_MAX: i32 = 19;
 
+/// schema 版本越界告警（None = 在已验证范围内）。只告警不拦截：
+/// 上游新版本通常只改本工具不用的表，providers 结构兼容时照常读取。
+pub fn schema_warning(version: i32) -> Option<String> {
+    if version > SCHEMA_MAX {
+        Some(format!(
+            "cc-switch 数据库版本较新（schema {version}），本工具验证至 schema {SCHEMA_MAX}；通常可正常读取，若出现解析异常请更新本工具"
+        ))
+    } else if version < SCHEMA_MIN {
+        Some(format!(
+            "cc-switch 数据库版本较旧（schema {version}），本工具验证自 schema {SCHEMA_MIN}；若出现解析异常请升级 cc-switch"
+        ))
+    } else {
+        None
+    }
+}
+
 /// 本工具读取的三个应用类型。
 pub const APP_TYPES: [&str; 3] = ["claude", "codex", "pi"];
 
@@ -69,27 +85,6 @@ pub fn read_schema_version(conn: &Connection) -> Result<i32, AppError> {
         .map_err(|e| AppError::new(AppErrorKind::CcSwitchDbOpenFailed, e.to_string()))
 }
 
-/// 校验 schema 版本是否在支持范围内。
-pub fn ensure_supported_schema(version: i32) -> Result<i32, AppError> {
-    if version > SCHEMA_MAX {
-        Err(AppError::new(
-            AppErrorKind::CcSwitchDbUnsupportedVersion,
-            format!(
-                "cc-switch 数据库版本过新（schema {version}），本工具最高支持 schema {SCHEMA_MAX}，请更新本工具"
-            ),
-        ))
-    } else if version < SCHEMA_MIN {
-        Err(AppError::new(
-            AppErrorKind::CcSwitchDbUnsupportedVersion,
-            format!(
-                "cc-switch 数据库版本过旧（schema {version}），请先将 cc-switch 升级到 3.20.x"
-            ),
-        ))
-    } else {
-        Ok(version)
-    }
-}
-
 /// 错误信息的前端表示。
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -122,6 +117,7 @@ pub struct SourceInfo {
     pub path: String,
     pub exists: bool,
     pub schema_version: Option<i32>,
+    pub schema_warning: Option<String>,
     pub provider_counts: Vec<AppTypeCount>,
     pub error: Option<SourceError>,
 }
@@ -135,6 +131,7 @@ pub fn inspect_source(path: &Path) -> SourceInfo {
             path: path_str,
             exists: false,
             schema_version: None,
+            schema_warning: None,
             provider_counts: Vec::new(),
             error: Some(SourceError {
                 kind: AppErrorKind::CcSwitchDbNotFound,
@@ -145,10 +142,11 @@ pub fn inspect_source(path: &Path) -> SourceInfo {
     match open_read_only(path)
         .and_then(|conn| inspect_connection(&conn))
     {
-        Ok((version, counts)) => SourceInfo {
+        Ok((version, counts, warning)) => SourceInfo {
             path: path_str,
             exists: true,
             schema_version: Some(version),
+            schema_warning: warning,
             provider_counts: counts,
             error: None,
         },
@@ -156,19 +154,21 @@ pub fn inspect_source(path: &Path) -> SourceInfo {
             path: path_str,
             exists: true,
             schema_version: None,
+            schema_warning: None,
             provider_counts: Vec::new(),
             error: Some(SourceError::from_app_error(&e)),
         },
     }
 }
 
-/// 在已打开的只读连接上读取版本与计数。
+/// 在已打开的只读连接上读取版本、计数与版本告警（版本越界只告警不拦截）。
 pub fn inspect_connection(
     conn: &Connection,
-) -> Result<(i32, Vec<AppTypeCount>), AppError> {
-    let version = ensure_supported_schema(read_schema_version(conn)?)?;
+) -> Result<(i32, Vec<AppTypeCount>, Option<String>), AppError> {
+    let version = read_schema_version(conn)?;
+    let warning = schema_warning(version);
     let counts = query_provider_counts(conn)?;
-    Ok((version, counts))
+    Ok((version, counts, warning))
 }
 
 /// 统计三类应用各自的供应商数量。
@@ -372,11 +372,12 @@ mod tests {
 
     #[test]
     fn schema_check_boundaries() {
-        assert_eq!(ensure_supported_schema(16).unwrap(), 16);
-        assert_eq!(ensure_supported_schema(17).unwrap(), 17);
-        assert_eq!(ensure_supported_schema(18).unwrap(), 18);
-        assert!(ensure_supported_schema(19).is_err());
-        assert!(ensure_supported_schema(15).is_err());
+        assert!(schema_warning(16).is_none());
+        assert!(schema_warning(17).is_none());
+        assert!(schema_warning(18).is_none());
+        assert!(schema_warning(19).is_none());
+        assert!(schema_warning(20).unwrap().contains("schema 20"));
+        assert!(schema_warning(15).unwrap().contains("schema 15"));
     }
 
     #[test]

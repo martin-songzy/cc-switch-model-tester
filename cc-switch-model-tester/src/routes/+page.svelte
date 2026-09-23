@@ -655,7 +655,13 @@
           class="badge {source.error ? 'err' : 'ok'}"
           title={source.error ? source.error.message : source.path}
         >{source.error ? '数据源异常' : '已连接'}</span>
-        {#if !source.error}<span class="badge">schema {source.schemaVersion}</span>{/if}
+        {#if !source.error}
+          <span
+            class="badge"
+            class:warn={!!source.schemaWarning}
+            title={source.schemaWarning ?? ''}
+          >schema {source.schemaVersion}{source.schemaWarning ? ' · 未验证' : ''}</span>
+        {/if}
       {/if}
       {#if appInfo}<span class="version">v{appInfo.version} ({appInfo.commit})</span>{/if}
     </span>

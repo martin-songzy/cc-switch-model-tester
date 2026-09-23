@@ -35,8 +35,8 @@ use rand::RngExt;
 use rusqlite::Connection;
 
 use ccswitch::db::{
-    default_db_path, ensure_supported_schema, inspect_source, load_candidate_endpoints,
-    load_provider_rows, open_read_only, read_schema_version, SourceInfo,
+    default_db_path, schema_warning, inspect_source, load_candidate_endpoints,
+    load_provider_rows, open_read_only, SourceInfo,
 };
 use domain::{AppType, ProviderCatalogView};
 use error::{AppError, AppErrorKind};
@@ -109,6 +109,7 @@ fn get_ccswitch_source(state: State<AppState>) -> SourceInfo {
             path: String::new(),
             exists: false,
             schema_version: None,
+            schema_warning: None,
             provider_counts: Vec::new(),
             error: Some(ccswitch::db::SourceError {
                 kind: e.kind,
@@ -155,8 +156,6 @@ fn load_provider_catalog(
     })?;
     let path = resolve_source_path(&state)?;
     let conn = open_read_only(&path)?;
-    let version = read_schema_version(&conn)?;
-    ensure_supported_schema(version)?;
     let rows = load_provider_rows(&conn, &app_type)?;
     let candidates = load_candidate_endpoints(&conn, &app_type)?;
     let mut views = Vec::with_capacity(rows.len());
@@ -208,7 +207,6 @@ fn preview_test(
 
     let path = resolve_source_path(&state)?;
     let conn = open_read_only(&path)?;
-    ensure_supported_schema(read_schema_version(&conn)?)?;
     let rows = load_provider_rows(&conn, input.app.as_str())?;
     let candidates = load_candidate_endpoints(&conn, input.app.as_str())?;
 

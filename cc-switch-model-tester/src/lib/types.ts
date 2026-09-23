@@ -20,6 +20,7 @@ export interface SourceInfo {
   path: string;
   exists: boolean;
   schemaVersion: number | null;
+  schemaWarning: string | null;
   providerCounts: AppTypeCount[];
   error: AppErrorRepr | null;
 }
