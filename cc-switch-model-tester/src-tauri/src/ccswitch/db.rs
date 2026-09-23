@@ -12,10 +12,11 @@ use serde::Serialize;
 
 use crate::error::{AppError, AppErrorKind};
 
-/// 支持的 schema 范围：cc-switch 3.19.x（16）至 3.20.x（18）。
-/// providers / provider_endpoints 表结构在 16~18 之间一致（差异均在本工具不使用的表）。
+/// 支持的 schema 范围：cc-switch 3.19.x（16）至 3.21.x（19）。
+/// providers / provider_endpoints 表结构在 16~19 之间一致：
+/// 17~19 的差异仅在不使用的表（代理日志/用量/技能等），19 只给 mcp_servers/skills 加 enabled_mcode 列。
 pub const SCHEMA_MIN: i32 = 16;
-pub const SCHEMA_MAX: i32 = 18;
+pub const SCHEMA_MAX: i32 = 19;
 
 /// 本工具读取的三个应用类型。
 pub const APP_TYPES: [&str; 3] = ["claude", "codex", "pi"];
