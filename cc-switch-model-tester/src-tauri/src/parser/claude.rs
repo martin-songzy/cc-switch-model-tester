@@ -11,7 +11,11 @@
 //!   "localProxyRequestOverrides": { "headers": { }, "body": { } },
 //!   "stackModels": [ { "model": "id", "displayName": "...", "oneM": true } ] }
 //! ```
-//! `stackModels`（cc-switch 4.0+）：供应商额外发布的模型列表，与 env 模型字段合并测试。
+//! 模型集合与 cc-switch 4.0 一致（上游 src-tauri/src/mode/stack.rs `claude_models`）：
+//! - meta.stackModels 是数组 → 只认该列表（界面「模型列表」），空列表 = 没有模型；
+//!   删除模型只改列表、不清 env 档位旧值，故此时必须忽略 env；
+//! - 未配列表 → env 模型映射 ANTHROPIC_MODEL + OPUS/SONNET/HAIKU/FABLE 四档，
+//!   显示名取对应档位的 *_MODEL_NAME。
 
 use serde_json::Value;
 
@@ -21,13 +25,13 @@ use crate::domain::{
 
 use super::{collect_headers, detect_managed, error_snapshot, nonempty_str};
 
-const MODEL_ENV_KEYS: [&str; 6] = [
-    "ANTHROPIC_MODEL",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL",
-    "ANTHROPIC_DEFAULT_FABLE_MODEL",
-    "CLAUDE_CODE_SUBAGENT_MODEL",
+/// env 模型映射（模型字段, 显示名字段），顺序与 cc-switch 一致。
+const MODEL_ENV_KEYS: [(&str, Option<&str>); 5] = [
+    ("ANTHROPIC_MODEL", None),
+    ("ANTHROPIC_DEFAULT_OPUS_MODEL", Some("ANTHROPIC_DEFAULT_OPUS_MODEL_NAME")),
+    ("ANTHROPIC_DEFAULT_SONNET_MODEL", Some("ANTHROPIC_DEFAULT_SONNET_MODEL_NAME")),
+    ("ANTHROPIC_DEFAULT_HAIKU_MODEL", Some("ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME")),
+    ("ANTHROPIC_DEFAULT_FABLE_MODEL", Some("ANTHROPIC_DEFAULT_FABLE_MODEL_NAME")),
 ];
 
 /// 凭据优先级（文档 6.1）：AUTH_TOKEN > API_KEY > OPENROUTER > OPENAI > GEMINI > 顶层 apiKey/api_key
@@ -98,35 +102,41 @@ pub(super) fn parse(
         );
     };
 
-    // ---- 模型集合：env 模型字段 + meta.stackModels 合并去重，剥离 [1M] 类展示标记 ----
-    // 同 id 去重时合并 markers（如 HAIKU=claude-opus-4-7 与 SONNET=claude-opus-4-7[1M]
-    // 指向同一模型，应保留 [1M] 能力标记，否则会丢失 1M 上下文 beta 注入）
+    // ---- 模型集合：stackModels 列表优先，未配时用 env 映射（规则见文件头）----
+    // 按剥离 [1M] 类标记后的 id 去重并合并 markers（如 HAIKU=x 与 SONNET=x[1M] 指向同一模型，
+    // 应保留 [1M] 能力标记，否则会丢失 1M 上下文 beta 注入）
     let mut models = Vec::new();
     let mut index: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
-    if let Some(env) = env {
-        for key in MODEL_ENV_KEYS {
-            if let Some(raw) = nonempty_str(env.get(key)) {
-                push_model(&mut models, &mut index, raw, None, false);
-            }
-        }
-    }
-    // cc-switch 4.0+ Stack 模式模型列表：{ model, displayName?, oneM? }，oneM=true 等价于 [1M] 标记
-    if let Some(stack) = meta.get("stackModels").and_then(|v| v.as_array()) {
+    let stack_list = meta.get("stackModels").and_then(|v| v.as_array());
+    if let Some(stack) = stack_list {
+        // 条目 { model, displayName?, oneM? }，oneM=true 等价于 [1M] 标记
         for m in stack {
             if let Some(raw) = nonempty_str(m.get("model")) {
                 let one_m = m.get("oneM").and_then(|v| v.as_bool()).unwrap_or(false);
                 push_model(&mut models, &mut index, raw, nonempty_str(m.get("displayName")), one_m);
             }
         }
+    } else if let Some(env) = env {
+        for (key, name_key) in MODEL_ENV_KEYS {
+            if let Some(raw) = nonempty_str(env.get(key)) {
+                let name = name_key.and_then(|k| nonempty_str(env.get(k)));
+                push_model(&mut models, &mut index, raw, name, false);
+            }
+        }
     }
     if models.is_empty() {
+        let msg = if stack_list.is_some() {
+            "模型列表为空（cc-switch 中该供应商的「模型列表」已清空）"
+        } else {
+            "模型列表为空（未配模型列表，且 env 中未找到模型映射字段）"
+        };
         return error_snapshot(
             AppType::Claude,
             provider_id,
             provider_name,
             raw_hash,
             candidate_endpoints,
-            "模型列表为空（env 与 meta.stackModels 中均未找到模型）".to_string(),
+            msg.to_string(),
         );
     }
 
