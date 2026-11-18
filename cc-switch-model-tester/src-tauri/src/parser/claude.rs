@@ -8,8 +8,10 @@
 //! meta 形如：
 //! ```json
 //! { "apiFormat": "anthropic", "isFullUrl": false, "customUserAgent": "...",
-//!   "localProxyRequestOverrides": { "headers": { }, "body": { } } }
+//!   "localProxyRequestOverrides": { "headers": { }, "body": { } },
+//!   "stackModels": [ { "model": "id", "displayName": "...", "oneM": true } ] }
 //! ```
+//! `stackModels`（cc-switch 4.0+）：供应商额外发布的模型列表，与 env 模型字段合并测试。
 
 use serde_json::Value;
 
@@ -96,7 +98,7 @@ pub(super) fn parse(
         );
     };
 
-    // ---- 模型集合：全部模型字段加入后去重，剥离 [1M] 类展示标记 ----
+    // ---- 模型集合：env 模型字段 + meta.stackModels 合并去重，剥离 [1M] 类展示标记 ----
     // 同 id 去重时合并 markers（如 HAIKU=claude-opus-4-7 与 SONNET=claude-opus-4-7[1M]
     // 指向同一模型，应保留 [1M] 能力标记，否则会丢失 1M 上下文 beta 注入）
     let mut models = Vec::new();
@@ -104,26 +106,16 @@ pub(super) fn parse(
     if let Some(env) = env {
         for key in MODEL_ENV_KEYS {
             if let Some(raw) = nonempty_str(env.get(key)) {
-                let (id, markers) = crate::domain::strip_model_id_markers(raw);
-                if id.is_empty() {
-                    continue;
-                }
-                match index.get(&id) {
-                    Some(&i) => {
-                        if !markers.is_empty() {
-                            let m: &mut crate::domain::ModelSnapshot = &mut models[i];
-                            for mk in markers {
-                                if !m.id_markers.iter().any(|x| x.eq_ignore_ascii_case(&mk)) {
-                                    m.id_markers.push(mk);
-                                }
-                            }
-                        }
-                    }
-                    None => {
-                        index.insert(id.clone(), models.len());
-                        models.push(super::model_with_markers(id, markers));
-                    }
-                }
+                push_model(&mut models, &mut index, raw, None, false);
+            }
+        }
+    }
+    // cc-switch 4.0+ Stack 模式模型列表：{ model, displayName?, oneM? }，oneM=true 等价于 [1M] 标记
+    if let Some(stack) = meta.get("stackModels").and_then(|v| v.as_array()) {
+        for m in stack {
+            if let Some(raw) = nonempty_str(m.get("model")) {
+                let one_m = m.get("oneM").and_then(|v| v.as_bool()).unwrap_or(false);
+                push_model(&mut models, &mut index, raw, nonempty_str(m.get("displayName")), one_m);
             }
         }
     }
@@ -134,7 +126,7 @@ pub(super) fn parse(
             provider_name,
             raw_hash,
             candidate_endpoints,
-            "模型列表为空（env 中未找到任何模型字段）".to_string(),
+            "模型列表为空（env 与 meta.stackModels 中均未找到模型）".to_string(),
         );
     }
 
@@ -235,6 +227,43 @@ pub(super) fn parse(
         status: ProviderStatus::Ready,
         warnings,
         config_error: None,
+    }
+}
+
+/// 加入一个模型：剥离展示标记后按 id 去重；重复时合并 markers、补齐缺失的显示名。
+fn push_model(
+    models: &mut Vec<crate::domain::ModelSnapshot>,
+    index: &mut std::collections::HashMap<String, usize>,
+    raw: &str,
+    display_name: Option<&str>,
+    one_m: bool,
+) {
+    let (id, mut markers) = crate::domain::strip_model_id_markers(raw);
+    if id.is_empty() {
+        return;
+    }
+    if one_m && !markers.iter().any(|x| x.eq_ignore_ascii_case("1M")) {
+        markers.push("1M".to_string());
+    }
+    let display_name = display_name.map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    match index.get(&id) {
+        Some(&i) => {
+            let m = &mut models[i];
+            for mk in markers {
+                if !m.id_markers.iter().any(|x| x.eq_ignore_ascii_case(&mk)) {
+                    m.id_markers.push(mk);
+                }
+            }
+            if m.display_name.is_none() {
+                m.display_name = display_name;
+            }
+        }
+        None => {
+            index.insert(id.clone(), models.len());
+            let mut snap = super::model_with_markers(id, markers);
+            snap.display_name = display_name;
+            models.push(snap);
+        }
     }
 }
 

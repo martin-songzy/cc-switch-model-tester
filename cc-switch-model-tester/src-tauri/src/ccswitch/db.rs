@@ -12,11 +12,12 @@ use serde::Serialize;
 
 use crate::error::{AppError, AppErrorKind};
 
-/// 支持的 schema 范围：cc-switch 3.19.x（16）至 3.21.x（19）。
-/// providers / provider_endpoints 表结构在 16~19 之间一致：
-/// 17~19 的差异仅在不使用的表（代理日志/用量/技能等），19 只给 mcp_servers/skills 加 enabled_mcode 列。
+/// 支持的 schema 范围：cc-switch 3.19.x（16）至 4.0.35（27）。
+/// providers / provider_endpoints 表结构在 16~27 之间一致：
+/// 17~27 的差异仅在不使用的表（代理日志/用量/技能/MCP 启用列等）。
+/// 4.0 新增的 Claude 模型列表 meta.stackModels 存在 meta JSON 里，由 parser/claude.rs 读取。
 pub const SCHEMA_MIN: i32 = 16;
-pub const SCHEMA_MAX: i32 = 19;
+pub const SCHEMA_MAX: i32 = 27;
 
 /// schema 版本越界告警（None = 在已验证范围内）。只告警不拦截：
 /// 上游新版本通常只改本工具不用的表，providers 结构兼容时照常读取。
@@ -376,7 +377,8 @@ mod tests {
         assert!(schema_warning(17).is_none());
         assert!(schema_warning(18).is_none());
         assert!(schema_warning(19).is_none());
-        assert!(schema_warning(20).unwrap().contains("schema 20"));
+        assert!(schema_warning(27).is_none());
+        assert!(schema_warning(28).unwrap().contains("schema 28"));
         assert!(schema_warning(15).unwrap().contains("schema 15"));
     }
 

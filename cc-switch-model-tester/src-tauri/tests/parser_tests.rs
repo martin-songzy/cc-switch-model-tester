@@ -280,6 +280,50 @@ fn claude_same_id_merges_markers_across_env_keys() {
 }
 
 #[test]
+fn claude_stack_models_merged_with_env() {
+    // cc-switch 4.0+ meta.stackModels：新模型追加、与 env 重名去重并合并 oneM、补齐显示名
+    let sc = json!({
+        "env": { "ANTHROPIC_BASE_URL": "https://x", "ANTHROPIC_AUTH_TOKEN": "t",
+                 "ANTHROPIC_MODEL": "model-a" }
+    });
+    let meta = json!({
+        "apiFormat": "anthropic",
+        "stackModels": [
+            { "model": "model-a", "displayName": "Model A", "oneM": true },
+            { "model": "model-b", "displayName": "Model B" },
+            { "model": "model-c[1M]", "oneM": true },
+            { "model": "  " },
+            { "displayName": "no-model" }
+        ]
+    });
+    let snap = parse_provider(AppType::Claude, "p", "P", &sc.to_string(), &meta.to_string(), Vec::new());
+    assert_eq!(snap.status, ProviderStatus::Ready);
+    let ids: Vec<&str> = snap.models.iter().map(|m| m.model_id.as_str()).collect();
+    assert_eq!(ids, vec!["model-a", "model-b", "model-c"], "env 在前、stackModels 追加、空条目跳过");
+    assert_eq!(snap.models[0].id_markers, vec!["1M"], "oneM 必须合并到 env 同名模型");
+    assert_eq!(snap.models[0].display_name.as_deref(), Some("Model A"));
+    assert!(snap.models[1].id_markers.is_empty());
+    assert_eq!(snap.models[1].display_name.as_deref(), Some("Model B"));
+    assert_eq!(snap.models[2].id_markers, vec!["1M"], "[1M] 与 oneM 同时存在时不重复");
+}
+
+#[test]
+fn claude_stack_models_only() {
+    // env 无模型字段，仅 stackModels 也应可用；空 stackModels 且 env 无模型 → 配置错误
+    let sc = json!({ "env": { "ANTHROPIC_BASE_URL": "https://x", "ANTHROPIC_AUTH_TOKEN": "t" } });
+    let meta = json!({ "stackModels": [ { "model": "only-stack", "oneM": true } ] });
+    let snap = parse_provider(AppType::Claude, "p", "P", &sc.to_string(), &meta.to_string(), Vec::new());
+    assert_eq!(snap.status, ProviderStatus::Ready);
+    assert_eq!(snap.models.len(), 1);
+    assert_eq!(snap.models[0].model_id, "only-stack");
+    assert_eq!(snap.models[0].id_markers, vec!["1M"]);
+
+    let empty = json!({ "stackModels": [] });
+    let snap = parse_provider(AppType::Claude, "p", "P", &sc.to_string(), &empty.to_string(), Vec::new());
+    assert_ne!(snap.status, ProviderStatus::Ready, "无任何模型应报配置错误");
+}
+
+#[test]
 fn claude_managed_by_base_url() {
     let sc = json!({
         "env": { "ANTHROPIC_BASE_URL": "https://api.githubcopilot.com", "ANTHROPIC_MODEL": "m",

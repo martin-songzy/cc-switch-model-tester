@@ -23,7 +23,7 @@
 2. 点最新一次绿色 ✅ 构建
 3. 页面底部 **Artifacts** 下载 `cc-switch-model-tester-windows`，解压双击运行
 
-前置要求：本机安装并配置过 cc-switch 3.20.x（数据库位于 `~/.cc-switch/cc-switch.db`）。
+前置要求：本机安装并配置过 cc-switch 3.19.x ~ 4.0.x（数据库位于 `~/.cc-switch/cc-switch.db`）。
 
 详细使用说明（界面、参数、结果类别、常见问题、安全说明）见 **[使用手册](cc-switch-model-tester/README.md)**。
 

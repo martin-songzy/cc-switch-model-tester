@@ -7,7 +7,7 @@
 - **获取 exe**：打开仓库 [Actions 构建页](../actions) → 最新绿色构建 → 页面底部 Artifacts 下载 `cc-switch-model-tester-windows` → 解压。
 - **便携版**：直接双击 `cc-switch-model-tester.exe`，无需安装。
 - **前置要求**：
-  - 本机已安装并配置过 [cc-switch](https://github.com/farion1231/cc-switch) 3.20.x（数据库位于 `~/.cc-switch/cc-switch.db`）。
+  - 本机已安装并配置过 [cc-switch](https://github.com/farion1231/cc-switch) 3.19.x ~ 4.0.x（数据库位于 `~/.cc-switch/cc-switch.db`）。
   - Windows 10 / 11。
 - 数据均存放在本机（`%LOCALAPPDATA%\CcSwitchModelTester\`），无任何网络上报。
 
@@ -79,7 +79,7 @@
 
 ## 七、已知限制
 
-- 仅支持 cc-switch schema 16~18（3.19.x ~ 3.20.x）。
+- 已验证 cc-switch schema 16~27（3.19.x ~ 4.0.35）；更新的 schema 会提示「未验证」但照常读取。
 - Bedrock 协议明确不支持（显示「暂不支持」，不会发送请求）。
 - 历史只保留 15 分钟（可手动清空；不支持导出）。
 - API Key 只显示末尾 4 位，不提供明文查看（有意设计）。
