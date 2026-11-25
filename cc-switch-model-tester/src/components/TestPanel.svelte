@@ -1142,6 +1142,9 @@
   .detail-modal { width: 760px; max-width: 92vw; }
   .modal-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
   .modal-head h3 { margin: 0; font-size: 14px; }
+  .detail-modal .modal-head { align-items: flex-start; }
+  .detail-modal .modal-head h3 { min-width: 0; overflow-wrap: anywhere; }
+  .detail-modal .modal-head .btn { margin-left: auto; flex-shrink: 0; white-space: nowrap; }
   /* 组明细弹窗：宽版 + 内嵌表格滚动区 */
   .modal.modal-wide { width: min(1280px, 95vw); max-width: none; max-height: 88vh; }
   .modal-table-wrap { overflow: auto; max-height: calc(88vh - 90px); border: 1px solid #eef0f4; border-radius: 6px; }

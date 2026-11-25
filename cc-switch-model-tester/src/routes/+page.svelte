@@ -258,13 +258,12 @@
     selected = next;
   }
 
-  /** “当前结果”＝每个供应商当前可见的模型（与界面显示一致） */
   /** 工具栏“全选”复选框状态：当前筛选结果里可测试模型的 已选/总数 */
   const filteredSelStats = $derived.by(() => {
     let total = 0;
     let sel = 0;
     for (const p of filtered) {
-      if (!isTestableBase(p)) continue;
+      if (!isTestable(p)) continue;
       for (const m of visibleModels(p)) {
         total++;
         if (selected.has(selectionKey(activeTab, p.id, m.modelId))) sel++;
@@ -409,12 +408,15 @@
 
   <div class="toolbar" style={activeView === 'catalog' ? '' : 'display:none;'}>
     <label class="filter" title="勾选＝选中当前筛选结果里全部可测试模型；取消＝清空">
-      <input
-        type="checkbox"
-        checked={filteredSelStats.total > 0 && filteredSelStats.sel === filteredSelStats.total}
-        indeterminate={filteredSelStats.sel > 0 && filteredSelStats.sel < filteredSelStats.total}
-        onchange={(e) => (e.currentTarget.checked ? selectAllFiltered() : clearSelection())}
-      />
+      {#key activeTab}
+        <input
+          type="checkbox"
+          checked={filteredSelStats.total > 0 && filteredSelStats.sel === filteredSelStats.total}
+          indeterminate={filteredSelStats.sel > 0 && filteredSelStats.sel < filteredSelStats.total}
+          disabled={filteredSelStats.total === 0}
+          onchange={(e) => (e.currentTarget.checked ? selectAllFiltered() : clearSelection())}
+        />
+      {/key}
       全选
     </label>
     <button class="btn sm" onclick={invertFiltered}>反选</button>
